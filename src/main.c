@@ -7,8 +7,14 @@
 #define zoom 4
 
 int main(void) {
-    InitWindow(mapwidth*tilesize*zoom, mapheight*tilesize*zoom, "GameRot");
-    SetTargetFPS(60);
+    InitWindow(800, 600, "GameRot");
+
+    int monitor = GetCurrentMonitor();
+
+    SetWindowSize(GetMonitorWidth(monitor), GetMonitorHeight(monitor));
+
+    float scaleX = (float)GetScreenWidth() / (mapwidth * tilesize);
+    float scaleY = (float)GetScreenHeight() / (mapheight * tilesize);
 
 
     int map[mapheight][mapwidth];
@@ -26,20 +32,27 @@ int main(void) {
     int tilesrow = tileset.width / tilesize;
 
     while (!WindowShouldClose()) {
+        if (IsKeyPressed(KEY_F11))
+{
+    ToggleFullscreen();
+}
         BeginDrawing();
         ClearBackground(BLACK);
 
-        // 3. Draw the map
         for (int y = 0; y < mapheight; y++) {
             for (int x = 0; x < mapwidth; x++) {
                 int tileID = map[y][x] ; 
 
-                // Find the source rectangle coordinates inside the tileset image
                 float xco= (float)((tileID % tilesrow) * tilesize);
                 float yco = (float)((tileID / tilesrow) * tilesize);
 
                 Rectangle tileinmap = { xco, yco, (float)tilesize, (float)tilesize };
-                Rectangle pastetile = { (float)(x * tilesize * zoom), (float)(y * tilesize * zoom), (float)(tilesize * zoom), (float)(tilesize * zoom) };
+                Rectangle pastetile = {
+                    x * tilesize * scaleX,
+                    y * tilesize * scaleY,
+                    tilesize * scaleX,
+                    tilesize * scaleY
+                };
 
                 DrawTexturePro(tileset, tileinmap, pastetile, (Vector2){0, 0}, 0.0f, WHITE);
             }
