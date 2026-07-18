@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build Raylib Game",
+            "command": "C:/raylib/w64devkit/bin/g++.exe",
+            "args": [
+                "${workspaceFolder}/src/main.c",
+                "${workspaceFolder}/src/core/game.c",
+                "${workspaceFolder}/src/map/tilemap.c",
+                "${workspaceFolder}/src/player/player.c",
+                "${workspaceFolder}/src/zombie/zombie.c",
+                "-o",
+                "${workspaceFolder}/game.exe",
+                "-I", "${workspaceFolder}/src/include",
+                "-I", "C:/raylib/raylib/src",
+                "-L", "C:/raylib/raylib/src",
+                "-lraylib",
+                "-lopengl32",
+                "-lgdi32",
+                "-lwinmm"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "C:\\raylib\\w64devkit\\bin;${env:PATH}"
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
