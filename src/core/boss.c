@@ -41,12 +41,12 @@ void OnEnemyDeath(GameState* game, int idx) {
             if (c + 1 < MAP_WIDTH) game->map.tiles[r][c + 1] = 237;
         }
         else if (bid == BOSS_DOOM_SCROLLER) {
-            SpawnEnemy(game, ENEMY_ALGORITHM, -1, -1);
+            SpawnEnemy(game, ENEMY_ALGORITHM, 16, 20);
             PlaySound(game->blastSound);
         }
         else if (bid == BOSS_ALGORITHM) {
             game->bosses[bid].showLog = true;
-            SpawnEnemy(game, ENEMY_BRAINROT_GOD, -1, -1);
+            SpawnEnemy(game, ENEMY_BRAINROT_GOD, 16, 20);
             SpawnMemoryFragments(game);
             PlaySound(game->blastSound);
         }

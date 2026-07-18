@@ -245,11 +245,40 @@ void UpdateZombies(GameState* game, float dt) {
             float moveSpeed = props.moveSpeed;
 
             if (moveSpeed > 0.0f) {
-                float stepX = (dx / len) * moveSpeed * dt;
-                float stepY = (dy / len) * moveSpeed * dt;
+                float stepX = (dx / len) * moveSpeed;
+                float stepY = (dy / len) * moveSpeed;
 
-                float nextX = game->zombies[i].position.x + stepX;
-                float nextY = game->zombies[i].position.y + stepY;
+                float sepX = 0.0f;
+                float sepY = 0.0f;
+                float selfRadius = (TILE_PX / 2.0f) * props.scale;
+
+                for (int j = 0; j < MAX_ZOMBIES; j++) {
+                    if (j == i || !game->zombies[j].active) continue;
+                    
+                    float jdx = game->zombies[i].position.x - game->zombies[j].position.x;
+                    float jdy = game->zombies[i].position.y - game->zombies[j].position.y;
+                    float dist = sqrtf(jdx * jdx + jdy * jdy);
+                    
+                    EnemyProperties jProps = GetEnemyProperties(game->zombies[j].type, currentLevel, game->difficulty);
+                    float otherRadius = (TILE_PX / 2.0f) * jProps.scale;
+                    float minDist = selfRadius + otherRadius - 4.0f;
+
+                    if (dist > 0.1f && dist < minDist) {
+                        sepX += (jdx / dist) * (minDist - dist) * 15.0f;
+                        sepY += (jdy / dist) * (minDist - dist) * 15.0f;
+                    }
+                }
+
+                float finalStepX = stepX + sepX;
+                float finalStepY = stepY + sepY;
+                float finalLen = sqrtf(finalStepX * finalStepX + finalStepY * finalStepY);
+                if (finalLen > moveSpeed) {
+                    finalStepX = (finalStepX / finalLen) * moveSpeed;
+                    finalStepY = (finalStepY / finalLen) * moveSpeed;
+                }
+
+                float nextX = game->zombies[i].position.x + finalStepX * dt;
+                float nextY = game->zombies[i].position.y + finalStepY * dt;
 
                 if (Zombie_CanMoveTo(&game->map, nextX, nextY)) {
                     game->zombies[i].position.x = nextX;
@@ -264,7 +293,6 @@ void UpdateZombies(GameState* game, float dt) {
                 }
             }
 
-            // Sync grid cell indices
             game->zombies[i].row = (int)((game->zombies[i].position.y + TILE_PX / 2.0f) / TILE_PX);
             game->zombies[i].col = (int)((game->zombies[i].position.x + TILE_PX / 2.0f) / TILE_PX);
         }

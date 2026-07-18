@@ -239,8 +239,9 @@ void DrawWinScreen(const GameState* game) {
 }
 
 void DrawHUD(const GameState* game) {
-    DrawRectangle(10, 10, 360, 142, ColorAlpha(DARKGRAY, 0.8f));
-    DrawRectangleLines(10, 10, 360, 142, WHITE);
+    int hudHeight = (currentLevel == 3) ? 162 : 142;
+    DrawRectangle(10, 10, 360, hudHeight, ColorAlpha(DARKGRAY, 0.8f));
+    DrawRectangleLines(10, 10, 360, hudHeight, WHITE);
     
     const char* levelName = (currentLevel == 0) ? "LEVEL 1: Ohio Sewers" :
                             (currentLevel == 1) ? "LEVEL 2: Sigma Research Facility" :
@@ -261,6 +262,13 @@ void DrawHUD(const GameState* game) {
     DrawRectangle(61, 69, 278 * pct, 14, hpColor);
 
     DrawText(TextFormat("KILLS: %d", game->enemiesKilled), 20, 118, 14, ORANGE);
+
+    if (currentLevel == 3) {
+        int minutes = (int)(game->escapeTimer) / 60;
+        int seconds = (int)(game->escapeTimer) % 60;
+        Color timerColor = (game->escapeTimer < 30.0f) ? RED : ORANGE;
+        DrawText(TextFormat("COLLAPSE IN: %02d:%02d", minutes, seconds), 20, 138, 14, timerColor);
+    }
 
     if (game->hasGun) {
         DrawText("GUN", 20, 95, 14, SKYBLUE);

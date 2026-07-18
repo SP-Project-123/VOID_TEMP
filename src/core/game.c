@@ -242,7 +242,7 @@ void LoadLevel(GameState* game, int levelIndex) {
         SpawnZombie(game);
         SpawnEnemy(game, ENEMY_RAT_KING, bossRow, bossCol);
     } else if (levelIndex == 2) {
-        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
+        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, 16, 20);
     }
 
     game->hasGun = false;
@@ -250,6 +250,32 @@ void LoadLevel(GameState* game, int levelIndex) {
     game->gunSpawnTimer = 4.0f;
     game->gunAbilityTimer = 0.0f;
     game->startTextTimer = 4.0f;
+    game->escapeTimer = 120.0f;
+
+    // Spawn potion on each map
+    game->potionSpawned = false;
+    int potionRow = -1, potionCol = -1;
+    for (int attempt = 0; attempt < 200; attempt++) {
+        int r = GetRandomValue(2, MAP_HEIGHT - 3);
+        int c = GetRandomValue(2, MAP_WIDTH - 3);
+        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
+            int dist = abs(c - startCol) + abs(r - startRow);
+            if (dist >= 5) {
+                potionRow = r;
+                potionCol = c;
+                game->potionSpawned = true;
+                break;
+            }
+        }
+    }
+    if (!game->potionSpawned) {
+        game->potionRow = 8;
+        game->potionCol = 8;
+        game->potionSpawned = true;
+    } else {
+        game->potionRow = potionRow;
+        game->potionCol = potionCol;
+    }
 
     game->checkpointPosition = game->player.position;
     game->checkpointLevel = currentLevel;
@@ -301,23 +327,14 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
                 }
             }
 
-            int pCol = (int)(game->player.position.x / TILE_PX);
-            int pRow = (int)(game->player.position.y / TILE_PX);
-            int dx = 0, dy = 0;
-            if (game->player.direction == DIR_UP) dy = -1;
-            else if (game->player.direction == DIR_DOWN) dy = 1;
-            else if (game->player.direction == DIR_LEFT) dx = -1;
-            else if (game->player.direction == DIR_RIGHT) dx = 1;
-
-            float rx = (pCol + dx) * TILE_PX;
-            float ry = (pRow + dy) * TILE_PX;
+            float rx = game->player.position.x;
+            float ry = game->player.position.y;
             float rw = TILE_PX;
             float rh = TILE_PX;
-            if (dx != 0) rw = TILE_PX * 2.0f;
-            if (dy != 0) rh = TILE_PX * 2.0f;
-            if (dx == -1) rx = (pCol - 2) * TILE_PX;
-            if (dy == -1) ry = (pRow - 2) * TILE_PX;
-
+            if (game->player.direction == DIR_UP) ry -= TILE_PX;
+            else if (game->player.direction == DIR_DOWN) ry += TILE_PX;
+            else if (game->player.direction == DIR_LEFT) rx -= TILE_PX;
+            else if (game->player.direction == DIR_RIGHT) rx += TILE_PX;
             Rectangle attackRec = { rx, ry, rw, rh };
 
             for (int i = 0; i < MAX_ZOMBIES; i++) {
@@ -359,6 +376,20 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
         if (game->gunSpawnTimer <= 0.0f) {
             SpawnGun(game);
             game->gunSpawnTimer = 4.0f;
+        }
+    }
+
+    if (game->potionSpawned) {
+        float gx = game->potionCol * TILE_PX + TILE_PX / 2.0f;
+        float gy = game->potionRow * TILE_PX + TILE_PX / 2.0f;
+        float px = game->player.position.x + TILE_PX / 2.0f;
+        float py = game->player.position.y + TILE_PX / 2.0f;
+        float dx = px - gx;
+        float dy = py - gy;
+        if (sqrtf(dx*dx + dy*dy) < 32.0f) {
+            game->potionSpawned = false;
+            game->player.health = game->player.maxHealth;
+            PlaySound(game->blastSound);
         }
     }
 }
@@ -707,6 +738,38 @@ void UpdateGame(GameState* game, float dt) {
         game->startTextTimer -= dt;
     }
 
+    if (IsKeyPressed(KEY_M) && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+        for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+        if (currentLevel == 0) {
+            GameHistory_SaveEntry(game->playerName, 1, false);
+            GameState_LoadCutscenes(game);
+            game->state = STATE_INTRO;
+            game->cutscenePart = 1;
+            game->cutsceneTime = 0.0f;
+            PlaySound(game->cut2Audio);
+            game->cutsceneTargetLevel = 1;
+            game->cutsceneTargetState = STATE_SURVIVAL;
+        } else if (currentLevel == 1) {
+            GameHistory_SaveEntry(game->playerName, 2, false);
+            LoadLevel(game, 2);
+        } else if (currentLevel == 2) {
+            GameHistory_SaveEntry(game->playerName, 3, false);
+            LoadLevel(game, 3);
+        } else if (currentLevel == 3) {
+            GameHistory_SaveEntry(game->playerName, 4, true);
+            game->state = STATE_WIN;
+        }
+    }
+
+    if (currentLevel == 3 && game->state == STATE_SURVIVAL) {
+        game->escapeTimer -= dt;
+        if (game->escapeTimer <= 0.0f) {
+            game->escapeTimer = 0.0f;
+            GameHistory_SaveEntry(game->playerName, 4, false);
+            game->state = STATE_GAMEOVER;
+        }
+    }
+
     int pCol = (int)(game->player.position.x / TILE_PX);
     int pRow = (int)(game->player.position.y / TILE_PX);
 
@@ -876,28 +939,20 @@ static void DrawGameplayWorld(const GameState* game) {
     Player_Draw(&game->player, game->playerTileset, game->playerTilesPerRow);
 
     if (game->player.isAttacking && game->player.attackTimer > 0.0f) {
-        int pCol = game->player.gridX;
-        int pRow = game->player.gridY;
-        int dx = 0, dy = 0;
-        if (game->player.direction == DIR_UP) dy = -1;
-        else if (game->player.direction == DIR_DOWN) dy = 1;
-        else if (game->player.direction == DIR_LEFT) dx = -1;
-        else if (game->player.direction == DIR_RIGHT) dx = 1;
-        
-        float rx = (pCol + dx) * TILE_PX;
-        float ry = (pRow + dy) * TILE_PX;
+        float rx = game->player.position.x;
+        float ry = game->player.position.y;
         float rw = TILE_PX;
         float rh = TILE_PX;
-        if (dx != 0) rw = TILE_PX * 2.0f;
-        if (dy != 0) rh = TILE_PX * 2.0f;
-        if (dx == -1) rx = (pCol - 2) * TILE_PX;
-        if (dy == -1) ry = (pRow - 2) * TILE_PX;
+        if (game->player.direction == DIR_UP) ry -= TILE_PX;
+        else if (game->player.direction == DIR_DOWN) ry += TILE_PX;
+        else if (game->player.direction == DIR_LEFT) rx -= TILE_PX;
+        else if (game->player.direction == DIR_RIGHT) rx += TILE_PX;
         
         for (int i = 0; i < 6; i++) {
             float ox = rx + GetRandomValue(-2, 2);
             float oy = ry + GetRandomValue(-2, 2);
             Color fColor = (i % 3 == 0) ? GOLD : ((i % 2 == 0) ? ORANGE : RED);
-            DrawRectangle(ox, oy, rw, rh, ColorAlpha(fColor, 0.6f));
+            DrawRectangle(ox, oy, rw, rh, ColorAlpha(fColor, 0.4f));
         }
     }
 
@@ -912,6 +967,19 @@ static void DrawGameplayWorld(const GameState* game) {
         float pulse = sinf(GetTime() * 6.0f);
         DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f, SKYBLUE);
         DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, BLUE);
+    }
+
+    if (game->potionSpawned) {
+        float gx = game->potionCol * TILE_PX;
+        float gy = game->potionRow * TILE_PX;
+        float xco = (float)((135 % game->spritesTilesPerRow) * TILE_SIZE);
+        float yco = (float)((135 / game->spritesTilesPerRow) * TILE_SIZE);
+        Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
+        Rectangle dest = { gx, gy, (float)TILE_PX, (float)TILE_PX };
+        DrawTexturePro(game->spritesTileset, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
+        float pulse = sinf(GetTime() * 6.0f);
+        DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f, GREEN);
+        DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, LIME);
     }
 
     for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {

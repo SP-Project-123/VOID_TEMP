@@ -266,6 +266,9 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 | `cutsceneTargetState` | `GameMode` | State to transition to after cutscene |
 | `cutsceneTargetLevel` | `int` | Level to load after cutscene |
 | `enemiesKilled` | `int` | Cumulative enemy kill counter |
+| `escapeTimer` | `float` | Level 3 escape countdown |
+| `potionRow`, `potionCol` | `int` | Randomly spawned potion position |
+| `potionSpawned` | `bool` | Whether the potion is currently on the map |
 
 ### `Player` (common.h:122-142)
 

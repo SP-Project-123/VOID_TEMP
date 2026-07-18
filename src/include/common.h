@@ -233,6 +233,10 @@ typedef struct {
     GameMode cutsceneTargetState;
     int cutsceneTargetLevel;
     int enemiesKilled;
+    float escapeTimer;
+    int potionRow;
+    int potionCol;
+    bool potionSpawned;
 } GameState;
 
 // --- Global Level Tracker ---
