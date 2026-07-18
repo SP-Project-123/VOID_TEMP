@@ -595,7 +595,6 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
     bool canSpawn = true;
     if (currentLevel == 1 && game->bosses[BOSS_RAT_KING].defeated) canSpawn = false;
     if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
-    if (currentLevel == 3) canSpawn = false;
 
     game->zombieSpawnTimer += dt;
     float spawnCooldown = (currentLevel == 0) ? LEVEL1_SPAWN_INTERVAL : (currentLevel == 1) ? LEVEL2_SPAWN_INTERVAL : LEVEL3_SPAWN_INTERVAL;

@@ -82,6 +82,8 @@ void SpawnZombie(GameState* game) {
     if (currentLevel == 1 || currentLevel == 2) {
         int roll = GetRandomValue(0, 2);
         type = (roll == 0) ? ENEMY_SNAKE : (roll == 1) ? ENEMY_SPIDER : ENEMY_GHOST;
+    } else if (currentLevel == 3) {
+        type = ENEMY_GHOST;
     }
     SpawnEnemy(game, type, -1, -1);
 }
