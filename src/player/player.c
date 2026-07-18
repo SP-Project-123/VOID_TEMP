@@ -4,14 +4,6 @@
 // Declare external level tracking variable
 extern int currentLevel;
 
-// Helper drawing function for rendering tiles
-static void DrawTile(Texture2D tileset, int tilesPerRow, int tileID, float x, float y) {
-    float xco = (float)((tileID % tilesPerRow) * TILE_SIZE);
-    float yco = (float)((tileID / tilesPerRow) * TILE_SIZE);
-    Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
-    Rectangle dest = { x, y, (float)TILE_PX, (float)TILE_PX };
-    DrawTexturePro(tileset, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
-}
 
 // --- Player Implementations ---
 

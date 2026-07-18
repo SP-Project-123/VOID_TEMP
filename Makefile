@@ -14,6 +14,8 @@ LDFLAGS = -L$(RAYLIB_LIB) -lraylib -lopengl32 -lgdi32 -lwinmm
 # Source files
 SRC = src/main.c \
       src/core/game.c \
+      src/core/boss.c \
+      src/ui/ui.c \
       src/map/tilemap.c \
       src/player/player.c \
       src/zombie/zombie.c
@@ -27,8 +29,8 @@ all: $(TARGET)
 $(TARGET): $(SRC)
 	$(CC) $(SRC) -o $(TARGET) $(CFLAGS) $(INCLUDES) $(LDFLAGS)
 
-# Clean built files
-clean:
-	@if exist $(TARGET) del /Q $(TARGET)
+# Build tileset viewer tool
+viewer: src/tools/tileset_viewer.c
+	$(CC) src/tools/tileset_viewer.c -o tileset_viewer.exe $(CFLAGS) -I$(RAYLIB_INCLUDE) $(LDFLAGS)
 
-.PHONY: all clean
+.PHONY: all clean viewer

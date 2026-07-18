@@ -3,7 +3,7 @@
 
 int main(void) {
     // Window width and height matches layout dimensions
-    InitWindow(MAP_WIDTH * TILE_PX, MAP_HEIGHT * TILE_PX, "GameRot");
+    InitWindow(MAP_WIDTH * TILE_PX, MAP_HEIGHT * TILE_PX, "The GameRot");
     InitAudioDevice(); // Initialize audio device
     SetTargetFPS(60);
 

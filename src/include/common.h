@@ -22,12 +22,16 @@
 // --- Game States ---
 typedef enum {
     STATE_MENU,
+    STATE_NAME_PROMPT,
+    STATE_INTRO,
     STATE_INFO,
+    STATE_HISTORY,
     STATE_TEAM,
     STATE_EXPLORING,
     STATE_CUTSCENE,
     STATE_SURVIVAL,
-    STATE_GAMEOVER
+    STATE_GAMEOVER,
+    STATE_WIN
 } GameMode;
 
 // --- Directions ---
@@ -40,6 +44,16 @@ typedef struct {
     int tilesPerRow;
 } Tilemap;
 
+// --- Enemy Type ---
+typedef enum {
+    ENEMY_SNAKE,
+    ENEMY_SPIDER,
+    ENEMY_RAT_KING,
+    ENEMY_DOOM_SCROLLER,
+    ENEMY_ALGORITHM,
+    ENEMY_BRAINROT_GOD
+} EnemyType;
+
 // --- Zombie / Enemy Struct ---
 typedef struct {
     int row; 
@@ -47,7 +61,19 @@ typedef struct {
     bool active;
     float health;
     float maxHealth;
+    EnemyType type;
+    float shootTimer;
+    Vector2 position;
 } Zombie;
+
+// --- Enemy Ranged Projectile ---
+#define MAX_ENEMY_PROJECTILES 30
+typedef struct {
+    Vector2 position;
+    Vector2 velocity;
+    bool active;
+    bool isBig;
+} EnemyProjectile;
 
 // --- Environmental Effects ---
 #define MAX_ASH_EFFECTS 50
@@ -81,6 +107,14 @@ typedef struct {
     float maxHealth;
 } Player;
 
+// --- Player Ranged Projectile ---
+#define MAX_PLAYER_PROJECTILES 20
+typedef struct {
+    Vector2 position;
+    Vector2 velocity;
+    bool active;
+} PlayerProjectile;
+
 // --- Global Engine Core State ---
 typedef struct {
     Tilemap map;
@@ -94,13 +128,97 @@ typedef struct {
     int menuSelection;
     int storyPage;
 
+    // --- User Info & Lives ---
+    char playerName[16];
+    int playerNameLength;
+    int lives;
+
+    // --- Checkpoint Tracking ---
+    Vector2 checkpointPosition;
+    int checkpointLevel;
+    GameMode checkpointState;
+    bool checkpointActive;
+
+    // --- Font Handle ---
+    Font gameFont;
+
     // --- Audio Handles ---
     Music bgMusic;
     Sound slashSound;
     Sound blastSound;
     Sound hitSound;
     float hitSoundTimer; // Cooldown timer so damage SFX doesn't trigger every frame
+
+    // --- Intro Video Cutscenes ---
+    Sound cut1Audio;
+    Sound cut2Audio;
+    int cutscenePart;      // 0 for cut1, 1 for cut2
+    float cutsceneTime;    // Track elapsed time during intro
+    bool cutscenesLoaded;
+    Texture2D cut1Textures[152];
+    Texture2D cut2Textures[62];
+    float startTextTimer;  // Timer for displaying the level start banner overlay
+    int mayorRow;          // Randomly selected row for Mayor spawn
+    int mayorCol;          // Randomly selected col for Mayor spawn
+    Texture2D playerTileset;
+    int playerTilesPerRow;
+    Texture2D spritesTileset;
+    int spritesTilesPerRow;
+    EnemyProjectile enemyProjectiles[MAX_ENEMY_PROJECTILES];
+    PlayerProjectile playerProjectiles[MAX_PLAYER_PROJECTILES];
+    bool hasGun;
+    bool gunSpawned;
+    int gunRow;
+    int gunCol;
+    float gunAbilityTimer;
+    float gunSpawnTimer;
+    typedef struct {
+        bool spawned;
+        bool defeated;
+        bool showLog;
+    } BossState;
+    BossState bosses[6];
+    bool curiosityActivated;
+    bool knowledgeActivated;
+    bool truthActivated;
+    Vector2 curiosityPos;
+    Vector2 knowledgePos;
+    Vector2 truthPos;
 } GameState;
+
+// --- Global Level Tracker ---
+extern int currentLevel;
+
+// --- Game History Structure & Functions ---
+#define MAX_HISTORY_ENTRIES 8
+typedef struct {
+    char entries[MAX_HISTORY_ENTRIES][64];
+    int count;
+} GameHistory;
+
+void GameHistory_SaveEntry(const char* name, int levelCleared, bool victory);
+void GameHistory_Load(GameHistory* history);
+
+// --- Boss & Combat Helper Functions ---
+void OnZombieDeath(GameState* game, int idx);
+bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float baseRadius);
+void DamageZombie(GameState* game, int idx, float damage);
+void SpawnGun(GameState* game);
+
+// --- Drawing Helpers ---
+void DrawTile(Texture2D tileset, int tilesPerRow, int tileID, float x, float y);
+void DrawCustomText(const GameState* game, const char* text, float posX, float posY, float fontSize, Color color);
+float MeasureCustomText(const GameState* game, const char* text, float fontSize);
+
+// --- UI Screen Draw Routines ---
+void DrawMenuScreen(const GameState* game);
+void DrawInfoScreen(const GameState* game);
+void DrawHistoryScreen(const GameState* game);
+void DrawTeamScreen(const GameState* game);
+void DrawGameOverScreen(const GameState* game);
+void DrawWinScreen(const GameState* game);
+void DrawHUD(const GameState* game);
+void DrawStoryOverlays(const GameState* game);
 
 // --- OOP & Helper Function Implementations ---
 int GetTileType(int tileID);
@@ -119,6 +237,11 @@ void UpdateGame(GameState* game, float dt);
 void DrawGame(const GameState* game);
 
 void SpawnZombie(GameState* game);
+void SpawnRatKing(GameState* game, int r, int c);
+void SpawnDoomScroller(GameState* game);
+void SpawnAlgorithm(GameState* game);
+void SpawnBrainrotGod(GameState* game);
+void SpawnMemoryFragments(GameState* game);
 void UpdateZombies(GameState* game, float dt);
 
 #endif

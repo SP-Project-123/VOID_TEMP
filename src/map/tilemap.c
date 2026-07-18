@@ -5,32 +5,24 @@
 // Declare external level tracking variable
 extern int currentLevel;
 
-// Helper drawing function for rendering tiles
-static void DrawTile(Texture2D tileset, int tilesPerRow, int tileID, float x, float y) {
-    float xco = (float)((tileID % tilesPerRow) * TILE_SIZE);
-    float yco = (float)((tileID / tilesPerRow) * TILE_SIZE);
-    Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
-    Rectangle dest = { x, y, (float)TILE_PX, (float)TILE_PX };
-    DrawTexturePro(tileset, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
-}
 
 // --- Tile Type Classification ---
 int GetTileType(int tileID) {
-    // 355 is designated as the Mayor tile
-    if (tileID == 355) return TILE_MAYOR;
-    // 283 is designated as the Cave tile
-    if (tileID == 283) return TILE_CAVE;
+    // 306/308 is designated as the Mayor tile
+    if (tileID == 306 || tileID == 308) return TILE_MAYOR;
+    // 236, 237, and 283 are designated as the Cave exit gate tiles
+    if (tileID == 236 || tileID == 237 || tileID == 283) return TILE_CAVE;
     
     // Designated list of car tile IDs from map1.csv
-    static const int carTiles[] = { 263, 287, 306, 329, 330, 353, 354,313,181,101,288,183 };
+    static const int carTiles[] = { 263, 287, 329, 330, 353,324,323,275,276, 354,313,181,101,288,183,347,348,349,350 };
     for (int i = 0; i < (int)(sizeof(carTiles) / sizeof(carTiles[0])); i++) {
         if (carTiles[i] == tileID) return TILE_CAR;
     }
 
     // Walkable / Ground tiles list
     static const int walkable[] = {
-        19, 20, 43, 44, 45, 67, 68, 69,
-        121, 126, 265, 288, 290, 293, 337, 344
+        19, 20,21, 43, 44, 45, 67, 68, 69,22,23,47,46,70,71,101,125,
+        121, 126, 265, 288,289, 290,291,292, 293, 337,336,338,171,170,312,313,314, 344, 209,210,83,193,185,198,210,185,135
     };
     for (int i = 0; i < (int)(sizeof(walkable) / sizeof(walkable[0])); i++) {
         if (walkable[i] == tileID) return TILE_GROUND;
@@ -71,10 +63,12 @@ void Tilemap_Load(Tilemap* self, const char* csvPath, const char* texturePath) {
 }
 
 void Tilemap_Draw(const Tilemap* self) {
-    // Note: Main viewport drawing is overridden by DrawGame's 5x5 centering camera loop.
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int tileID = self->tiles[y][x];
+            if (tileID == 306 || tileID == 308) {
+                tileID = ((int)(GetTime() * 2.0f) % 2 == 0) ? 306 : 308;
+            }
             DrawTile(self->tileset, self->tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
         }
     }
