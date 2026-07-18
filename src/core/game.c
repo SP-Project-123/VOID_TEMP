@@ -59,88 +59,6 @@ void GameState_UnloadCutscenes(GameState* game) {
 }
 
 void GameState_Init(GameState* self) {
-    currentLevel = 0;
-    Tilemap_Load(&self->map, "map1.csv", "tilemap_packed.png");
-    Player_Init(&self->player);
-
-    for (int y = 0; y < MAP_HEIGHT; y++) {
-        for (int x = 0; x < MAP_WIDTH; x++) {
-            int tid = self->map.tiles[y][x];
-            if (tid == 283 || tid == 306 || tid == 308 || tid == 355) {
-                self->map.tiles[y][x] = 20;
-            }
-        }
-    }
-
-    typedef struct { int r, c; } CoordPair;
-    CoordPair candidates[MAP_WIDTH * MAP_HEIGHT];
-    int candidateCount = 0;
-
-    for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-        for (int x = 1; x < MAP_WIDTH - 2; x++) {
-            int type1 = GetTileType(self->map.tiles[y][x]);
-            int type2 = GetTileType(self->map.tiles[y][x+1]);
-            if (type1 != TILE_WALL && type1 != TILE_CAR && type2 != TILE_WALL && type2 != TILE_CAR) {
-                int distSq = (y - 2) * (y - 2) + (x - 2) * (x - 2);
-                if (distSq >= 100) {
-                    candidates[candidateCount].r = y;
-                    candidates[candidateCount].c = x;
-                    candidateCount++;
-                }
-            }
-        }
-    }
-
-    if (candidateCount > 0) {
-        int idx = GetRandomValue(0, candidateCount - 1);
-        self->mayorRow = candidates[idx].r;
-        self->mayorCol = candidates[idx].c;
-    } else {
-        self->mayorRow = 10;
-        self->mayorCol = 10;
-    }
-    self->map.tiles[self->mayorRow][self->mayorCol] = 283;
-
-    self->state = STATE_MENU;
-    self->zombieTimer = 0.0f;
-    self->zombieSpawnTimer = 0.0f;
-    self->gameOverSelection = 0;
-    self->menuSelection = 0;
-    self->storyPage = 0;
-    self->playerName[0] = '\0';
-    self->playerNameLength = 0;
-    self->lives = 3;
-    self->checkpointActive = false;
-    self->checkpointPosition = (Vector2){ 0, 0 };
-    self->checkpointLevel = 0;
-    self->checkpointState = STATE_EXPLORING;
-    for (int i = 0; i < MAX_ZOMBIES; i++) self->zombies[i].active = false;
-    for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) self->enemyProjectiles[i].active = false;
-    for (int i = 0; i < MAX_PLAYER_PROJECTILES; i++) self->playerProjectiles[i].active = false;
-    for (int i = 0; i < MAX_ASH_EFFECTS; i++) self->ashEffects[i].active = false;
-    self->hasGun = false;
-    self->gunSpawned = false;
-    self->gunAbilityTimer = 0.0f;
-    self->gunSpawnTimer = 4.0f;
-    for (int i = 0; i < 4; i++) {
-        self->bosses[i].spawned = false;
-        self->bosses[i].defeated = false;
-        self->bosses[i].showLog = false;
-        self->bosses[i].tileId = 0;
-    }
-    self->bosses[BOSS_RAT_KING].tileId = 23;
-    self->bosses[BOSS_DOOM_SCROLLER].tileId = 306;
-    self->bosses[BOSS_ALGORITHM].tileId = 308;
-    self->bosses[BOSS_BRAINROT_GOD].tileId = 27;
-    for (int i = 0; i < 3; i++) {
-        self->fragments[i].activated = false;
-        self->fragments[i].position = (Vector2){0, 0};
-        self->fragments[i].name = "";
-    }
-    self->difficulty = 1;
-    self->cutsceneTargetState = (GameMode)-1;
-    self->cutsceneTargetLevel = 0;
-
     self->bgMusic = LoadMusicStream("resources/bgm.mp3");
     if (FileExists("resources/slash.ogg")) {
         self->slashSound = LoadSound("resources/slash.ogg");
@@ -176,6 +94,39 @@ void GameState_Init(GameState* self) {
     } else {
         self->gameFont = GetFontDefault();
     }
+
+    self->map.tileset.id = 0;
+    self->difficulty = 1;
+    self->playerName[0] = '\0';
+    self->playerNameLength = 0;
+    self->lives = 3;
+    self->checkpointActive = false;
+    self->checkpointPosition = (Vector2){ 0, 0 };
+    self->checkpointLevel = 0;
+    self->checkpointState = STATE_EXPLORING;
+    self->gameOverSelection = 0;
+    self->menuSelection = 0;
+    self->storyPage = 0;
+    self->cutsceneTargetState = (GameMode)-1;
+    self->cutsceneTargetLevel = 0;
+    for (int i = 0; i < 4; i++) {
+        self->bosses[i].spawned = false;
+        self->bosses[i].defeated = false;
+        self->bosses[i].showLog = false;
+        self->bosses[i].tileId = 0;
+    }
+    self->bosses[BOSS_RAT_KING].tileId = 23;
+    self->bosses[BOSS_DOOM_SCROLLER].tileId = 306;
+    self->bosses[BOSS_ALGORITHM].tileId = 308;
+    self->bosses[BOSS_BRAINROT_GOD].tileId = 27;
+    for (int i = 0; i < 3; i++) {
+        self->fragments[i].activated = false;
+        self->fragments[i].position = (Vector2){0, 0};
+        self->fragments[i].name = "";
+    }
+
+    LoadLevel(self, 0);
+    self->state = STATE_MENU;
 
     PlayMusicStream(self->bgMusic);
 }
@@ -227,6 +178,48 @@ void LoadLevel(GameState* game, int levelIndex) {
     game->player.gridY = startRow;
 
     game->state = (levelIndex == 0) ? STATE_EXPLORING : STATE_SURVIVAL;
+
+    // Set up Mayor on level 0
+    if (levelIndex == 0) {
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int tid = game->map.tiles[y][x];
+                if (tid == 283 || tid == 306 || tid == 308 || tid == 355) {
+                    game->map.tiles[y][x] = 20;
+                }
+            }
+        }
+
+        typedef struct { int r, c; } CoordPair;
+        CoordPair candidates[MAP_WIDTH * MAP_HEIGHT];
+        int candidateCount = 0;
+
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            for (int x = 1; x < MAP_WIDTH - 2; x++) {
+                int type1 = GetTileType(game->map.tiles[y][x]);
+                int type2 = GetTileType(game->map.tiles[y][x+1]);
+                if (type1 != TILE_WALL && type1 != TILE_CAR && type2 != TILE_WALL && type2 != TILE_CAR) {
+                    int distSq = (y - 2) * (y - 2) + (x - 2) * (x - 2);
+                    if (distSq >= 100) {
+                        candidates[candidateCount].r = y;
+                        candidates[candidateCount].c = x;
+                        candidateCount++;
+                    }
+                }
+            }
+        }
+
+        if (candidateCount > 0) {
+            int idx = GetRandomValue(0, candidateCount - 1);
+            game->mayorRow = candidates[idx].r;
+            game->mayorCol = candidates[idx].c;
+        } else {
+            game->mayorRow = 10;
+            game->mayorCol = 10;
+        }
+        game->map.tiles[game->mayorRow][game->mayorCol] = 283;
+    }
+
     game->zombieTimer = 0.0f;
     game->zombieSpawnTimer = 0.0f;
     for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
@@ -464,8 +457,10 @@ static void UpdateIntroState(GameState* game, float dt) {
     }
 }
 
-static void UpdateExploringState(GameState* game, int pRow, int pCol, float dt) {
+static void UpdateExploringState(GameState* game, int oldRow, int oldCol, float dt) {
     Player_Update(&game->player, &game->map, dt);
+    int pCol = (int)((game->player.position.x + TILE_PX / 2.0f) / TILE_PX);
+    int pRow = (int)((game->player.position.y + TILE_PX / 2.0f) / TILE_PX);
     if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
         int tileID = game->map.tiles[pRow][pCol];
         if (GetTileType(tileID) == TILE_MAYOR) {
@@ -499,13 +494,13 @@ static void UpdateCutsceneState(GameState* game) {
     }
 }
 
-static void UpdateSurvivalState(GameState* game, float dt, int pRow, int pCol) {
+static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCol) {
     Player_Update(&game->player, &game->map, dt);
 
+    int pCol = (int)((game->player.position.x + TILE_PX / 2.0f) / TILE_PX);
+    int pRow = (int)((game->player.position.y + TILE_PX / 2.0f) / TILE_PX);
+
     if (currentLevel == 3) {
-        int pCol = (int)(game->player.position.x / TILE_PX);
-        int pRow = (int)(game->player.position.y / TILE_PX);
-        
         if (pRow == 2 && pCol == 20) {
             if (game->map.tiles[3][21] == 59) {
                 game->map.tiles[3][21] = 17;
@@ -746,9 +741,15 @@ static void DrawGameplayWorld(const GameState* game) {
         float mx = game->mayorCol * TILE_PX;
         float my = game->mayorRow * TILE_PX;
         float pulse = sinf(GetTime() * 4.0f);
-        DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
-        DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
-        DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
+        if (game->state == STATE_EXPLORING) {
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
+            DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
+        } else if (game->state == STATE_SURVIVAL) {
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
+            DrawText("EXIT", mx - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GOLD);
+        }
     }
 
     for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
