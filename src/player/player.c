@@ -39,8 +39,8 @@ void Player_Init(Player* self) {
 }
 
 static bool Player_CanMoveTo(const Tilemap* map, float x, float y) {
-    float margin = 2.0f; // Small margin to prevent getting stuck on corners
-    float size = 30.0f;  // Player size is 32x32, checking up to width/height of 30.0f
+    float margin = 12.0f; // Small margin to prevent getting stuck on corners
+    float size = 20.0f;  // Player size is 32x32, checking up to width/height of 30.0f
     
     // Check all 4 corners of the bounding box
     if (!Tilemap_IsWalkable(map, x + margin, y + margin)) return false;

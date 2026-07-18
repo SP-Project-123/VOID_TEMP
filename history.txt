@@ -15,7 +15,17 @@ hj - Level 2 Cleared
 gg\ - Level 3 Cleared
  - Level 1 Cleared
 hh - Level 1 Cleared
+<<<<<<< HEAD
 fahad - Level 1 Cleared
 fahad - Level 2 Cleared
+=======
+hhk - Level 1 Cleared
+hhk - Level 2 Cleared
+ - Level 1 Cleared
+ - Level 2 Cleared
+oe - Level 1 Cleared
+weij - Level 1 Cleared
+weij - Level 2 Cleared
+>>>>>>> e2e540b (Movements issues fixed)
  - Level 1 Cleared
  - Level 2 Cleared

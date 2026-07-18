@@ -22,8 +22,5 @@
 68,68,68,68,68,68,68,126,45,288,337,290,130,114,115,115,116,310,311,310,311,310,133,288,337,329,43,44,68,68,68,68,68,68,68
 24,24,24,24,24,24,24,43,45,288,337,290,130,261,261,261,261,334,335,334,335,334,133,288,337,353,43,45,24,24,24,24,24,24,24
 24,24,24,24,24,24,24,43,45,288,337,290,130,255,256,257,258,358,359,358,359,358,133,288,337,290,43,45,24,24,24,24,24,24,24
-//my vision is 
-290
-my mc will start at row=23 , col=25 coordinate, then he walk as he wants in the pavement and roads, the array of id for them are {19,20,43,44,45,67,68,69,121,,126,265,288,290,,293,313,337,344}
 
-these are allowed paths for walking , if the character pressed a button to move to a id other than this, then it will not bring an effect. 
+
