@@ -11,7 +11,7 @@ BossId GetBossId(EnemyType type) {
     }
 }
 
-void OnZombieDeath(GameState* game, int idx) {
+void OnEnemyDeath(GameState* game, int idx) {
     game->zombies[idx].active = false;
     for (int a = 0; a < MAX_ASH_EFFECTS; a++) {
         if (!game->ashEffects[a].active) {
@@ -95,25 +95,7 @@ void DamageZombie(GameState* game, int idx, float damage) {
     game->zombies[idx].health -= damage;
     if (game->zombies[idx].health <= 0.0f) {
         game->zombies[idx].health = 0.0f;
-        OnZombieDeath(game, idx);
-    }
-}
-
-void SpawnGun(GameState* game) {
-    game->gunSpawned = false;
-    for (int attempt = 0; attempt < 100; attempt++) {
-        int r = GetRandomValue(1, MAP_HEIGHT - 2);
-        int c = GetRandomValue(1, MAP_WIDTH - 2);
-        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-            int pCol = (int)(game->player.position.x / TILE_PX);
-            int pRow = (int)(game->player.position.y / TILE_PX);
-            if (abs(r - pRow) + abs(c - pCol) >= 3) {
-                game->gunRow = r;
-                game->gunCol = c;
-                game->gunSpawned = true;
-                break;
-            }
-        }
+        OnEnemyDeath(game, idx);
     }
 }
 

@@ -9,6 +9,18 @@ int currentLevel = 0;
 #define CUT1_FRAMES 152
 #define CUT2_FRAMES 62
 
+static void UpdatePlayerWeapon(GameState* game, float dt);
+static void UpdatePlayerProjectiles(GameState* game, float dt);
+static void UpdateMenuState(GameState* game);
+static void UpdateNamePromptState(GameState* game);
+static void UpdateIntroState(GameState* game, float dt);
+static void UpdateExploringState(GameState* game, int pRow, int pCol, float dt);
+static void UpdateCutsceneState(GameState* game);
+static void UpdateSurvivalState(GameState* game, float dt, int pRow, int pCol);
+static void UpdateGameOverState(GameState* game);
+static void UpdateWinState(GameState* game);
+static void DrawGameplayWorld(const GameState* game);
+
 void GameState_LoadCutscenes(GameState* game) {
     if (game->cutscenesLoaded) return;
     
@@ -253,31 +265,7 @@ void GameState_TransitionFromCutscene(GameState* game) {
 }
 
 // --- State Machine Update Routine ---
-void UpdateGame(GameState* game, float dt) {
-    for (int i = 0; i < 4; i++) {
-        if (game->bosses[i].showLog) {
-            if (IsKeyPressed(KEY_ENTER)) game->bosses[i].showLog = false;
-            return;
-        }
-    }
-
-    UpdateMusicStream(game->bgMusic);
-
-    if (game->hitSoundTimer > 0.0f) game->hitSoundTimer -= dt;
-    if (game->startTextTimer > 0.0f) game->startTextTimer -= dt;
-
-
-
-    int pCol = (int)(game->player.position.x / TILE_PX);
-    int pRow = (int)(game->player.position.y / TILE_PX);
-
-    for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
-        if (game->ashEffects[i].active) {
-            game->ashEffects[i].timer -= dt;
-            if (game->ashEffects[i].timer <= 0.0f) game->ashEffects[i].active = false;
-        }
-    }
-
+static void UpdatePlayerWeapon(GameState* game, float dt) {
     if (IsKeyPressed(KEY_SPACE) && game->player.hasWeapon && !game->player.isAttacking) {
         if (game->player.lightAttackCooldown <= 0.0f) {
             PlaySound(game->slashSound);
@@ -369,7 +357,9 @@ void UpdateGame(GameState* game, float dt) {
             game->gunSpawnTimer = 4.0f;
         }
     }
+}
 
+static void UpdatePlayerProjectiles(GameState* game, float dt) {
     for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
         if (!game->playerProjectiles[p].active) continue;
 
@@ -401,307 +391,512 @@ void UpdateGame(GameState* game, float dt) {
             }
         }
     }
+}
 
-    switch (game->state) {
-        case STATE_MENU: {
-            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
-                game->menuSelection--;
-                if (game->menuSelection < 0) game->menuSelection = 4;
-            }
-            if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
-                game->menuSelection++;
-                if (game->menuSelection > 4) game->menuSelection = 0;
-            }
-            if (game->menuSelection == 1) {
-                if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
-                    game->difficulty = (game->difficulty + 1) % 3;
-                } else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
-                    game->difficulty = (game->difficulty + 2) % 3;
-                }
-            } else if (IsKeyPressed(KEY_ENTER)) {
-                if (game->menuSelection == 0) game->state = STATE_NAME_PROMPT;
-                else if (game->menuSelection == 2) game->state = STATE_HISTORY;
-                else if (game->menuSelection == 3) game->state = STATE_TEAM;
-                else if (game->menuSelection == 4) CloseWindow();
-            }
-            break;
+static void UpdateMenuState(GameState* game) {
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+        game->menuSelection--;
+        if (game->menuSelection < 0) game->menuSelection = 4;
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+        game->menuSelection++;
+        if (game->menuSelection > 4) game->menuSelection = 0;
+    }
+    if (game->menuSelection == 1) {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+            game->difficulty = (game->difficulty + 1) % 3;
+        } else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+            game->difficulty = (game->difficulty + 2) % 3;
         }
+    } else if (IsKeyPressed(KEY_ENTER)) {
+        if (game->menuSelection == 0) game->state = STATE_NAME_PROMPT;
+        else if (game->menuSelection == 2) game->state = STATE_HISTORY;
+        else if (game->menuSelection == 3) game->state = STATE_TEAM;
+        else if (game->menuSelection == 4) CloseWindow();
+    }
+}
 
-        case STATE_NAME_PROMPT: {
-            int key = GetCharPressed();
-            while (key > 0) {
-                if ((key >= 32) && (key <= 125) && (game->playerNameLength < 15)) {
-                    game->playerName[game->playerNameLength] = (char)key;
-                    game->playerName[game->playerNameLength + 1] = '\0';
-                    game->playerNameLength++;
-                }
-                key = GetCharPressed();
-            }
-            if (IsKeyPressed(KEY_BACKSPACE)) {
-                game->playerNameLength--;
-                if (game->playerNameLength < 0) game->playerNameLength = 0;
-                game->playerName[game->playerNameLength] = '\0';
-            }
-            if (IsKeyPressed(KEY_ENTER) && game->playerNameLength > 0) {
-                StopMusicStream(game->bgMusic);
-                GameState_LoadCutscenes(game);
-                game->state = STATE_INTRO;
-                game->cutscenePart = 0;
-                game->cutsceneTime = 0.0f;
-                PlaySound(game->cut1Audio);
-            }
-            if (IsKeyPressed(KEY_ESCAPE)) game->state = STATE_MENU;
-            break;
+static void UpdateNamePromptState(GameState* game) {
+    int key = GetCharPressed();
+    while (key > 0) {
+        if ((key >= 32) && (key <= 125) && (game->playerNameLength < 15)) {
+            game->playerName[game->playerNameLength] = (char)key;
+            game->playerName[game->playerNameLength + 1] = '\0';
+            game->playerNameLength++;
         }
+        key = GetCharPressed();
+    }
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        game->playerNameLength--;
+        if (game->playerNameLength < 0) game->playerNameLength = 0;
+        game->playerName[game->playerNameLength] = '\0';
+    }
+    if (IsKeyPressed(KEY_ENTER) && game->playerNameLength > 0) {
+        StopMusicStream(game->bgMusic);
+        GameState_LoadCutscenes(game);
+        game->state = STATE_INTRO;
+        game->cutscenePart = 0;
+        game->cutsceneTime = 0.0f;
+        PlaySound(game->cut1Audio);
+    }
+    if (IsKeyPressed(KEY_ESCAPE)) game->state = STATE_MENU;
+}
 
-        case STATE_INTRO: {
-            game->cutsceneTime += dt;
-            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ESCAPE)) {
-                StopSound(game->cut1Audio);
-                StopSound(game->cut2Audio);
-                GameState_UnloadCutscenes(game);
-                GameState_TransitionFromCutscene(game);
-                break;
-            }
-            if (game->cutscenePart == 0 && game->cutsceneTime >= 10.0f) {
-                game->cutscenePart = 1;
-                game->cutsceneTime = 0.0f;
-                StopSound(game->cut1Audio);
-                PlaySound(game->cut2Audio);
-            }
-            if (game->cutscenePart == 1 && game->cutsceneTime >= 4.0f) {
-                StopSound(game->cut2Audio);
-                GameState_UnloadCutscenes(game);
-                GameState_TransitionFromCutscene(game);
-            }
-            break;
-        }
+static void UpdateIntroState(GameState* game, float dt) {
+    game->cutsceneTime += dt;
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ESCAPE)) {
+        StopSound(game->cut1Audio);
+        StopSound(game->cut2Audio);
+        GameState_UnloadCutscenes(game);
+        GameState_TransitionFromCutscene(game);
+        return;
+    }
+    if (game->cutscenePart == 0 && game->cutsceneTime >= 10.0f) {
+        game->cutscenePart = 1;
+        game->cutsceneTime = 0.0f;
+        StopSound(game->cut1Audio);
+        PlaySound(game->cut2Audio);
+    }
+    if (game->cutscenePart == 1 && game->cutsceneTime >= 4.0f) {
+        StopSound(game->cut2Audio);
+        GameState_UnloadCutscenes(game);
+        GameState_TransitionFromCutscene(game);
+    }
+}
 
-
-
-        case STATE_HISTORY:
-        case STATE_TEAM: {
-            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ENTER)) {
-                game->state = STATE_MENU;
-            }
-            break;
-        }
-
-        case STATE_EXPLORING: {
-            Player_Update(&game->player, &game->map, dt);
-            if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
-                int tileID = game->map.tiles[pRow][pCol];
-                if (GetTileType(tileID) == TILE_MAYOR) {
-                    game->state = STATE_CUTSCENE;
-                }
-            }
-            break;
-        }
-
-        case STATE_CUTSCENE: {
-            if (IsKeyPressed(KEY_ENTER)) {
-                game->state = STATE_SURVIVAL;
-                game->zombieTimer = 0.0f;
-                game->zombieSpawnTimer = 0.0f;
-                
-                if (currentLevel == 0) {
-                    game->map.tiles[game->mayorRow][game->mayorCol] = 236;
-                    game->map.tiles[game->mayorRow][game->mayorCol + 1] = 237;
-                    game->player.position.x = 25.0f * TILE_PX;
-                    game->player.position.y = 23.0f * TILE_PX;
-                    for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-                    for (int s = 0; s < 6; s++) SpawnZombie(game);
-                } else {
-                    for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-                    for (int s = 0; s < 6; s++) SpawnZombie(game);
-                }
-
-                game->checkpointPosition = game->player.position;
-                game->checkpointLevel = currentLevel;
-                game->checkpointState = STATE_SURVIVAL;
-                game->checkpointActive = true;
-            }
-            break;
-        }
-
-        case STATE_SURVIVAL: {
-            Player_Update(&game->player, &game->map, dt);
-
-            if (currentLevel == 3) {
-                int pCol = (int)(game->player.position.x / TILE_PX);
-                int pRow = (int)(game->player.position.y / TILE_PX);
-                
-                if (pRow == 2 && pCol == 20) {
-                    if (game->map.tiles[3][21] == 59) {
-                        game->map.tiles[3][21] = 17;
-                        game->map.tiles[3][22] = 17;
-                        PlaySound(game->blastSound);
-                    }
-                }
-                
-                if ((pRow == 2 && pCol == 23) || (pRow == 20 && pCol == 8)) {
-                    if (game->map.tiles[21][3] == 59) {
-                        game->map.tiles[21][3] = 17;
-                        game->map.tiles[21][4] = 17;
-                        game->map.tiles[22][3] = 17;
-                        game->map.tiles[22][4] = 17;
-                        PlaySound(game->blastSound);
-                    }
-                }
-            }
-
-            bool canSpawn = true;
-            if (currentLevel == 1 && game->bosses[BOSS_RAT_KING].defeated) canSpawn = false;
-            if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
-            if (currentLevel == 3) canSpawn = false;
-
-            game->zombieSpawnTimer += dt;
-            float spawnCooldown = (currentLevel == 0) ? LEVEL1_SPAWN_INTERVAL : (currentLevel == 1) ? LEVEL2_SPAWN_INTERVAL : LEVEL3_SPAWN_INTERVAL;
-            if (game->zombieSpawnTimer >= spawnCooldown) {
-                game->zombieSpawnTimer = 0.0f;
-                if (canSpawn) {
-                    int spawnCount = 2 + currentLevel * 2;
-                    for (int s = 0; s < spawnCount; s++) {
-                        SpawnZombie(game);
-                    }
-                }
-            }
-
-            UpdateZombies(game, dt);
-
-            if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
-                int tileID = game->map.tiles[pRow][pCol];
-                if (GetTileType(tileID) == TILE_CAVE) {
-                    for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-
-                    if (currentLevel == 0) {
-                        GameHistory_SaveEntry(game->playerName, 1, false);
-                        
-                        GameState_LoadCutscenes(game);
-                        game->state = STATE_INTRO;
-                        game->cutscenePart = 1;
-                        game->cutsceneTime = 0.0f;
-                        PlaySound(game->cut2Audio);
-                        
-                        game->cutsceneTargetLevel = 1;
-                        game->cutsceneTargetState = STATE_SURVIVAL;
-                    } else if (currentLevel == 1) {
-                        GameHistory_SaveEntry(game->playerName, 2, false);
-                        LoadLevel(game, 2);
-                    } else if (currentLevel == 3) {
-                        GameHistory_SaveEntry(game->playerName, 4, true);
-                        game->state = STATE_WIN;
-                    }
-                }
-            }
-
-            game->player.survivalTimer += dt;
-            if (game->player.survivalTimer >= SUPERPOWER_READY_TIME && game->player.radiusCooldown <= 0.0f) {
-                game->player.radiusPowerupReady = true;
-            }
-
-            if (game->player.radiusPowerupReady && IsKeyDown(KEY_F)) game->player.isAimingSuperpower = true;
-            else game->player.isAimingSuperpower = false;
-
-            if (game->player.radiusPowerupReady && IsKeyReleased(KEY_F) && game->player.radiusCooldown <= 0.0f) {
-                PlaySound(game->blastSound);
-                game->player.radiusPowerupReady = false;
-                game->player.radiusCooldown = SUPERPOWER_COOLDOWN_MAX;
-                game->player.radiusBlastTimer = SUPERPOWER_BLAST_DURATION;
-                
-                Vector2 blastPos = { pCol * TILE_PX + TILE_PX/2.0f, pRow * TILE_PX + TILE_PX/2.0f };
-                for (int i = 0; i < MAX_ZOMBIES; i++) {
-                    if (game->zombies[i].active) {
-                        EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
-                        float zSize = TILE_PX * props.scale;
-                        float offset = (props.scale - 1.0f) / 2.0f;
-                        Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
-                        if (CheckCollisionCircleRec(blastPos, SUPERPOWER_RADIUS, zRec)) {
-                            DamageZombie(game, i, SUPERPOWER_DAMAGE);
-                        }
-                    }
-                }
-            }
-
-            if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
-                Vector2 pPos = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
-                for (int i = 0; i < 3; i++) {
-                    if (!game->fragments[i].activated) {
-                        float dx = pPos.x - game->fragments[i].position.x;
-                        float dy = pPos.y - game->fragments[i].position.y;
-                        if (sqrtf(dx*dx + dy*dy) < 24.0f) {
-                            game->fragments[i].activated = true;
-                            PlaySound(game->blastSound);
-                            for (int z = 0; z < MAX_ZOMBIES; z++) {
-                                if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
-                            }
-                        }
-                    }
-                }
-            }
-            Rectangle pRec = { game->player.position.x + 2.0f, game->player.position.y + 2.0f, 28.0f, 28.0f };
-            for (int i = 0; i < MAX_ZOMBIES; i++) {
-                if (game->zombies[i].active) {
-                    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
-                    float zSize = TILE_PX * props.scale;
-                    float offset = (props.scale - 1.0f) / 2.0f;
-                    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
-                    if (CheckCollisionRecs(pRec, zRec)) {
-                        game->player.health -= 30.0f * dt;
-                        if (game->hitSoundTimer <= 0.0f) {
-                            PlaySound(game->hitSound);
-                            game->hitSoundTimer = 0.5f;
-                        }
-                    }
-                }
-            }
-
-            if (game->player.health <= 0.0f) {
-                game->player.health = 0.0f;
-                if (game->checkpointActive && game->lives > 1) {
-                    game->lives--;
-                    game->player.health = 100.0f;
-                    
-                    if (currentLevel != game->checkpointLevel) {
-                        LoadLevel(game, game->checkpointLevel);
-                    } else {
-                        game->player.position = game->checkpointPosition;
-                        game->player.gridX = (int)(game->player.position.x / TILE_PX);
-                        game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                        game->state = game->checkpointState;
-                        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-                    }
-                } else {
-                    GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
-                    game->state = STATE_GAMEOVER;
-                }
-            }
-            break;
-        }
-
-        case STATE_GAMEOVER: {
-            if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) game->gameOverSelection = 0;
-            if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) game->gameOverSelection = 1;
-            if (IsKeyPressed(KEY_ENTER)) {
-                if (game->gameOverSelection == 0) {
-                    GameState_Init(game);
-                    game->state = STATE_SURVIVAL;
-                } else game->state = STATE_MENU;
-            }
-            break;
-        }
-
-        case STATE_WIN: {
-            if (IsKeyPressed(KEY_ENTER)) {
-                GameState_Init(game);
-                game->state = STATE_MENU;
-            }
-            break;
+static void UpdateExploringState(GameState* game, int pRow, int pCol, float dt) {
+    Player_Update(&game->player, &game->map, dt);
+    if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
+        int tileID = game->map.tiles[pRow][pCol];
+        if (GetTileType(tileID) == TILE_MAYOR) {
+            game->state = STATE_CUTSCENE;
         }
     }
 }
 
-// --- State Machine Draw Routine ---
+static void UpdateCutsceneState(GameState* game) {
+    if (IsKeyPressed(KEY_ENTER)) {
+        game->state = STATE_SURVIVAL;
+        game->zombieTimer = 0.0f;
+        game->zombieSpawnTimer = 0.0f;
+        
+        if (currentLevel == 0) {
+            game->map.tiles[game->mayorRow][game->mayorCol] = 236;
+            game->map.tiles[game->mayorRow][game->mayorCol + 1] = 237;
+            game->player.position.x = 25.0f * TILE_PX;
+            game->player.position.y = 23.0f * TILE_PX;
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+            for (int s = 0; s < 6; s++) SpawnZombie(game);
+        } else {
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+            for (int s = 0; s < 6; s++) SpawnZombie(game);
+        }
+
+        game->checkpointPosition = game->player.position;
+        game->checkpointLevel = currentLevel;
+        game->checkpointState = STATE_SURVIVAL;
+        game->checkpointActive = true;
+    }
+}
+
+static void UpdateSurvivalState(GameState* game, float dt, int pRow, int pCol) {
+    Player_Update(&game->player, &game->map, dt);
+
+    if (currentLevel == 3) {
+        int pCol = (int)(game->player.position.x / TILE_PX);
+        int pRow = (int)(game->player.position.y / TILE_PX);
+        
+        if (pRow == 2 && pCol == 20) {
+            if (game->map.tiles[3][21] == 59) {
+                game->map.tiles[3][21] = 17;
+                game->map.tiles[3][22] = 17;
+                PlaySound(game->blastSound);
+            }
+        }
+        
+        if ((pRow == 2 && pCol == 23) || (pRow == 20 && pCol == 8)) {
+            if (game->map.tiles[21][3] == 59) {
+                game->map.tiles[21][3] = 17;
+                game->map.tiles[21][4] = 17;
+                game->map.tiles[22][3] = 17;
+                game->map.tiles[22][4] = 17;
+                PlaySound(game->blastSound);
+            }
+        }
+    }
+
+    bool canSpawn = true;
+    if (currentLevel == 1 && game->bosses[BOSS_RAT_KING].defeated) canSpawn = false;
+    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
+    if (currentLevel == 3) canSpawn = false;
+
+    game->zombieSpawnTimer += dt;
+    float spawnCooldown = (currentLevel == 0) ? LEVEL1_SPAWN_INTERVAL : (currentLevel == 1) ? LEVEL2_SPAWN_INTERVAL : LEVEL3_SPAWN_INTERVAL;
+    if (game->zombieSpawnTimer >= spawnCooldown) {
+        game->zombieSpawnTimer = 0.0f;
+        if (canSpawn) {
+            int spawnCount = 2 + currentLevel * 2;
+            for (int s = 0; s < spawnCount; s++) {
+                SpawnZombie(game);
+            }
+        }
+    }
+
+    UpdateZombies(game, dt);
+
+    if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
+        int tileID = game->map.tiles[pRow][pCol];
+        if (GetTileType(tileID) == TILE_CAVE) {
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+
+            if (currentLevel == 0) {
+                GameHistory_SaveEntry(game->playerName, 1, false);
+                
+                GameState_LoadCutscenes(game);
+                game->state = STATE_INTRO;
+                game->cutscenePart = 1;
+                game->cutsceneTime = 0.0f;
+                PlaySound(game->cut2Audio);
+                
+                game->cutsceneTargetLevel = 1;
+                game->cutsceneTargetState = STATE_SURVIVAL;
+            } else if (currentLevel == 1) {
+                GameHistory_SaveEntry(game->playerName, 2, false);
+                LoadLevel(game, 2);
+            } else if (currentLevel == 3) {
+                GameHistory_SaveEntry(game->playerName, 4, true);
+                game->state = STATE_WIN;
+            }
+        }
+    }
+
+    game->player.survivalTimer += dt;
+    if (game->player.survivalTimer >= SUPERPOWER_READY_TIME && game->player.radiusCooldown <= 0.0f) {
+        game->player.radiusPowerupReady = true;
+    }
+
+    if (game->player.radiusPowerupReady && IsKeyDown(KEY_F)) game->player.isAimingSuperpower = true;
+    else game->player.isAimingSuperpower = false;
+
+    if (game->player.radiusPowerupReady && IsKeyReleased(KEY_F) && game->player.radiusCooldown <= 0.0f) {
+        PlaySound(game->blastSound);
+        game->player.radiusPowerupReady = false;
+        game->player.radiusCooldown = SUPERPOWER_COOLDOWN_MAX;
+        game->player.radiusBlastTimer = SUPERPOWER_BLAST_DURATION;
+        
+        Vector2 blastPos = { pCol * TILE_PX + TILE_PX/2.0f, pRow * TILE_PX + TILE_PX/2.0f };
+        for (int i = 0; i < MAX_ZOMBIES; i++) {
+            if (game->zombies[i].active) {
+                EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                float zSize = TILE_PX * props.scale;
+                float offset = (props.scale - 1.0f) / 2.0f;
+                Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                if (CheckCollisionCircleRec(blastPos, SUPERPOWER_RADIUS, zRec)) {
+                    DamageZombie(game, i, SUPERPOWER_DAMAGE);
+                }
+            }
+        }
+    }
+
+    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
+        Vector2 pPos = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
+        for (int i = 0; i < 3; i++) {
+            if (!game->fragments[i].activated) {
+                float dx = pPos.x - game->fragments[i].position.x;
+                float dy = pPos.y - game->fragments[i].position.y;
+                if (sqrtf(dx*dx + dy*dy) < 24.0f) {
+                    game->fragments[i].activated = true;
+                    PlaySound(game->blastSound);
+                    for (int z = 0; z < MAX_ZOMBIES; z++) {
+                        if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
+                    }
+                }
+            }
+        }
+    }
+    Rectangle pRec = { game->player.position.x + 2.0f, game->player.position.y + 2.0f, 28.0f, 28.0f };
+    for (int i = 0; i < MAX_ZOMBIES; i++) {
+        if (game->zombies[i].active) {
+            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            float zSize = TILE_PX * props.scale;
+            float offset = (props.scale - 1.0f) / 2.0f;
+            Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+            if (CheckCollisionRecs(pRec, zRec)) {
+                game->player.health -= 30.0f * dt;
+                if (game->hitSoundTimer <= 0.0f) {
+                    PlaySound(game->hitSound);
+                    game->hitSoundTimer = 0.5f;
+                }
+            }
+        }
+    }
+
+    if (game->player.health <= 0.0f) {
+        game->player.health = 0.0f;
+        if (game->checkpointActive && game->lives > 1) {
+            game->lives--;
+            game->player.health = 100.0f;
+            
+            if (currentLevel != game->checkpointLevel) {
+                LoadLevel(game, game->checkpointLevel);
+            } else {
+                game->player.position = game->checkpointPosition;
+                game->player.gridX = (int)(game->player.position.x / TILE_PX);
+                game->player.gridY = (int)(game->player.position.y / TILE_PX);
+                game->state = game->checkpointState;
+                for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+            }
+        } else {
+            GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
+            game->state = STATE_GAMEOVER;
+        }
+    }
+}
+
+static void UpdateGameOverState(GameState* game) {
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) game->gameOverSelection = 0;
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) game->gameOverSelection = 1;
+    if (IsKeyPressed(KEY_ENTER)) {
+        if (game->gameOverSelection == 0) {
+            GameState_Init(game);
+            game->state = STATE_SURVIVAL;
+        } else game->state = STATE_MENU;
+    }
+}
+
+static void UpdateWinState(GameState* game) {
+    if (IsKeyPressed(KEY_ENTER)) {
+        GameState_Init(game);
+        game->state = STATE_MENU;
+    }
+}
+
+void UpdateGame(GameState* game, float dt) {
+    for (int i = 0; i < 4; i++) {
+        if (game->bosses[i].showLog) {
+            if (IsKeyPressed(KEY_ENTER)) game->bosses[i].showLog = false;
+            return;
+        }
+    }
+
+    UpdateMusicStream(game->bgMusic);
+
+    if (game->hitSoundTimer > 0.0f) game->hitSoundTimer -= dt;
+    if (game->startTextTimer > 0.0f) game->startTextTimer -= dt;
+
+    int pCol = (int)(game->player.position.x / TILE_PX);
+    int pRow = (int)(game->player.position.y / TILE_PX);
+
+    for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
+        if (game->ashEffects[i].active) {
+            game->ashEffects[i].timer -= dt;
+            if (game->ashEffects[i].timer <= 0.0f) game->ashEffects[i].active = false;
+        }
+    }
+
+    UpdatePlayerWeapon(game, dt);
+    UpdatePlayerProjectiles(game, dt);
+
+    switch (game->state) {
+        case STATE_MENU:         UpdateMenuState(game); break;
+        case STATE_NAME_PROMPT:  UpdateNamePromptState(game); break;
+        case STATE_INTRO:        UpdateIntroState(game, dt); break;
+        case STATE_HISTORY:
+        case STATE_TEAM:
+            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_ENTER)) {
+                game->state = STATE_MENU;
+            }
+            break;
+        case STATE_EXPLORING:    UpdateExploringState(game, pRow, pCol, dt); break;
+        case STATE_CUTSCENE:     UpdateCutsceneState(game); break;
+        case STATE_SURVIVAL:     UpdateSurvivalState(game, dt, pRow, pCol); break;
+        case STATE_GAMEOVER:     UpdateGameOverState(game); break;
+        case STATE_WIN:          UpdateWinState(game); break;
+    }
+}
+
+
+
+static void DrawGameplayWorld(const GameState* game) {
+    Camera2D camera = { 0 };
+    camera.target = (Vector2){ game->player.position.x + TILE_PX / 2.0f, game->player.position.y + TILE_PX / 2.0f };
+    camera.offset = (Vector2){ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
+    camera.rotation = 0.0f;
+    camera.zoom = 2.5f;
+
+    BeginMode2D(camera);
+
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            int tileID = game->map.tiles[y][x];
+            DrawTile(game->map.tileset, game->map.tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
+        }
+    }
+
+    if (currentLevel == 3) {
+        float ex = 33 * TILE_PX;
+        float ey = 18 * TILE_PX;
+        float pulse = sinf(GetTime() * 4.0f);
+        DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
+        DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
+        DrawText("EXIT", ex - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, ey - 12, 10, GOLD);
+    }
+
+    if (currentLevel == 0) {
+        float mx = game->mayorCol * TILE_PX;
+        float my = game->mayorRow * TILE_PX;
+        float pulse = sinf(GetTime() * 4.0f);
+        DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
+        DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
+        DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
+    }
+
+    for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
+        if (game->ashEffects[i].active) {
+            float ax = game->ashEffects[i].gridX * TILE_PX;
+            float ay = game->ashEffects[i].gridY * TILE_PX;
+            float alpha = (game->ashEffects[i].timer / 1.5f) * 0.8f;
+            DrawRectangle(ax, ay, TILE_PX, TILE_PX, ColorAlpha((Color){30, 30, 30, 255}, alpha));
+        }
+    }
+
+    for (int i = 0; i < MAX_ZOMBIES; i++) {
+        if (game->zombies[i].active) {
+            float zx = game->zombies[i].position.x;
+            float zy = game->zombies[i].position.y;
+            
+            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            float pulse = 0.0f;
+            if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
+                pulse = sinf(GetTime() * 4.0f) * 4.0f;
+            }
+
+            float offset = (props.scale - 1.0f) / 2.0f;
+            Texture2D tileset = game->spritesTileset;
+            int tilesPerRow = game->spritesTilesPerRow;
+
+            if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+                tileset = game->map.tileset;
+                tilesPerRow = game->map.tilesPerRow;
+            }
+
+            DrawTexturePro(tileset,
+                           (Rectangle){ (float)(props.baseTileId % tilesPerRow) * TILE_SIZE, (float)(props.baseTileId / tilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
+                           (Rectangle){ zx - TILE_PX * offset, zy - TILE_PX * offset, TILE_PX * props.scale + pulse, TILE_PX * props.scale + pulse },
+                           (Vector2){ 0, 0 }, 0.0f, props.color);
+
+            if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+                DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
+            }
+
+            float barWidth = TILE_PX * props.scale;
+            float barHeight = (props.scale > 1.0f) ? ((props.scale >= 4.0f) ? 8.0f : 6.0f) : 4.0f;
+            float zx_offset = zx - (barWidth - TILE_PX)/2.0f;
+            float z_py = zy - 10.0f;
+            DrawRectangle(zx_offset, z_py, barWidth, barHeight, ColorAlpha(BLACK, 0.6f));
+            float pct = game->zombies[i].health / game->zombies[i].maxHealth;
+            if (pct < 0.0f) pct = 0.0f;
+            DrawRectangle(zx_offset + 1, z_py + 1, (barWidth - 2) * pct, barHeight - 2, RED);
+
+            if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
+                DrawText("USE FRAGMENTS", zx - 24, z_py - 12, 10, YELLOW);
+            }
+        }
+    }
+
+    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
+        Color colors[3] = { GREEN, YELLOW, RAYWHITE };
+        for (int i = 0; i < 3; i++) {
+            if (!game->fragments[i].activated) {
+                float pulse = sinf(GetTime() * 5.0f);
+                Vector2 fPos = game->fragments[i].position;
+                DrawCircleLines(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, colors[i]);
+                DrawCircle(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(colors[i], 0.5f));
+                DrawText(game->fragments[i].name, fPos.x - MeasureText(game->fragments[i].name, 10)/2.0f + TILE_PX/2.0f, fPos.y - 12, 10, colors[i]);
+            }
+        }
+    }
+
+    for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
+        if (game->enemyProjectiles[i].active) {
+            Vector2 p = game->enemyProjectiles[i].position;
+            float r = game->enemyProjectiles[i].isBig ? 12.0f : 5.0f;
+            Color innerCol = game->enemyProjectiles[i].isBig ? PURPLE : ORANGE;
+            Color outerCol = game->enemyProjectiles[i].isBig ? MAGENTA : RED;
+            DrawCircle(p.x, p.y, r, outerCol);
+            DrawCircle(p.x, p.y, r * 0.6f, innerCol);
+            DrawCircle(p.x, p.y, r * 0.3f, YELLOW);
+        }
+    }
+
+    if (game->player.isAimingSuperpower) {
+        float px = game->player.position.x + TILE_PX/2.0f;
+        float py = game->player.position.y + TILE_PX/2.0f;
+        DrawCircle(px, py, 5.0f * TILE_PX, ColorAlpha(RED, 0.3f));
+    }
+
+    if (game->player.radiusBlastTimer > 0.0f) {
+        float px = game->player.position.x + TILE_PX/2.0f;
+        float py = game->player.position.y + TILE_PX/2.0f;
+        float maxRadius = 5.0f * TILE_PX;
+        float currentRadius = maxRadius * (1.0f - (game->player.radiusBlastTimer / 0.5f));
+        DrawCircleLines(px, py, currentRadius, ORANGE);
+        DrawCircleLines(px, py, currentRadius + 2.0f, RED);
+    }
+
+    Player_Draw(&game->player, game->playerTileset, game->playerTilesPerRow);
+
+    if (game->player.isAttacking && game->player.attackTimer > 0.0f) {
+        int pCol = game->player.gridX;
+        int pRow = game->player.gridY;
+        int dx = 0, dy = 0;
+        if (game->player.direction == DIR_UP) dy = -1;
+        else if (game->player.direction == DIR_DOWN) dy = 1;
+        else if (game->player.direction == DIR_LEFT) dx = -1;
+        else if (game->player.direction == DIR_RIGHT) dx = 1;
+        
+        float rx = (pCol + dx) * TILE_PX;
+        float ry = (pRow + dy) * TILE_PX;
+        float rw = TILE_PX;
+        float rh = TILE_PX;
+        if (dx != 0) rw = TILE_PX * 2.0f;
+        if (dy != 0) rh = TILE_PX * 2.0f;
+        if (dx == -1) rx = (pCol - 2) * TILE_PX;
+        if (dy == -1) ry = (pRow - 2) * TILE_PX;
+        
+        for (int i = 0; i < 6; i++) {
+            float ox = rx + GetRandomValue(-2, 2);
+            float oy = ry + GetRandomValue(-2, 2);
+            Color fColor = (i % 3 == 0) ? GOLD : ((i % 2 == 0) ? ORANGE : RED);
+            DrawRectangle(ox, oy, rw, rh, ColorAlpha(fColor, 0.6f));
+        }
+    }
+
+    if (game->gunSpawned) {
+        float gx = game->gunCol * TILE_PX;
+        float gy = game->gunRow * TILE_PX;
+        float xco = (float)((133 % game->spritesTilesPerRow) * TILE_SIZE);
+        float yco = (float)((133 / game->spritesTilesPerRow) * TILE_SIZE);
+        Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
+        Rectangle dest = { gx, gy, (float)TILE_PX, (float)TILE_PX };
+        DrawTexturePro(game->spritesTileset, src, dest, (Vector2){0, 0}, 0.0f, ColorAlpha(WHITE, 0.65f));
+        float pulse = sinf(GetTime() * 6.0f);
+        DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f, SKYBLUE);
+        DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, BLUE);
+    }
+
+    for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
+        if (game->playerProjectiles[p].active) {
+            Vector2 pos = game->playerProjectiles[p].position;
+            DrawCircle(pos.x, pos.y, 6.0f, SKYBLUE);
+            DrawCircle(pos.x, pos.y, 4.0f, BLUE);
+            DrawCircle(pos.x, pos.y, 2.0f, WHITE);
+        }
+    }
+
+    EndMode2D();
+}
+
 void DrawGame(const GameState* game) {
     if (game->state == STATE_INTRO) {
         ClearBackground(BLACK);
@@ -730,183 +925,7 @@ void DrawGame(const GameState* game) {
     ClearBackground(BLACK);
 
     if (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL || game->state == STATE_CUTSCENE) {
-        Camera2D camera = { 0 };
-        camera.target = (Vector2){ game->player.position.x + TILE_PX / 2.0f, game->player.position.y + TILE_PX / 2.0f };
-        camera.offset = (Vector2){ GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-        camera.rotation = 0.0f;
-        camera.zoom = 2.5f;
-
-        BeginMode2D(camera);
-
-        for (int y = 0; y < MAP_HEIGHT; y++) {
-            for (int x = 0; x < MAP_WIDTH; x++) {
-                int tileID = game->map.tiles[y][x];
-                DrawTile(game->map.tileset, game->map.tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
-            }
-        }
-
-        if (currentLevel == 3) {
-            float ex = 33 * TILE_PX;
-            float ey = 18 * TILE_PX;
-            float pulse = sinf(GetTime() * 4.0f);
-            DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
-            DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
-            DrawText("EXIT", ex - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, ey - 12, 10, GOLD);
-        }
-
-        if (currentLevel == 0) {
-            float mx = game->mayorCol * TILE_PX;
-            float my = game->mayorRow * TILE_PX;
-            float pulse = sinf(GetTime() * 4.0f);
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
-            DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
-        }
-
-        for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
-            if (game->ashEffects[i].active) {
-                float ax = game->ashEffects[i].gridX * TILE_PX;
-                float ay = game->ashEffects[i].gridY * TILE_PX;
-                float alpha = (game->ashEffects[i].timer / 1.5f) * 0.8f;
-                DrawRectangle(ax, ay, TILE_PX, TILE_PX, ColorAlpha((Color){30, 30, 30, 255}, alpha));
-            }
-        }
-
-        for (int i = 0; i < MAX_ZOMBIES; i++) {
-            if (game->zombies[i].active) {
-                float zx = game->zombies[i].position.x;
-                float zy = game->zombies[i].position.y;
-                
-                EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
-                float pulse = 0.0f;
-                if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-                    pulse = sinf(GetTime() * 4.0f) * 4.0f;
-                }
-
-                float offset = (props.scale - 1.0f) / 2.0f;
-                Texture2D tileset = game->spritesTileset;
-                int tilesPerRow = game->spritesTilesPerRow;
-
-                if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
-                    tileset = game->map.tileset;
-                    tilesPerRow = game->map.tilesPerRow;
-                }
-
-                DrawTexturePro(tileset,
-                               (Rectangle){ (float)(props.baseTileId % tilesPerRow) * TILE_SIZE, (float)(props.baseTileId / tilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
-                               (Rectangle){ zx - TILE_PX * offset, zy - TILE_PX * offset, TILE_PX * props.scale + pulse, TILE_PX * props.scale + pulse },
-                               (Vector2){ 0, 0 }, 0.0f, props.color);
-
-                if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
-                    DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
-                }
-
-                float barWidth = TILE_PX * props.scale;
-                float barHeight = (props.scale > 1.0f) ? ((props.scale >= 4.0f) ? 8.0f : 6.0f) : 4.0f;
-                float zx_offset = zx - (barWidth - TILE_PX)/2.0f;
-                float z_py = zy - 10.0f;
-                DrawRectangle(zx_offset, z_py, barWidth, barHeight, ColorAlpha(BLACK, 0.6f));
-                float pct = game->zombies[i].health / game->zombies[i].maxHealth;
-                if (pct < 0.0f) pct = 0.0f;
-                DrawRectangle(zx_offset + 1, z_py + 1, (barWidth - 2) * pct, barHeight - 2, RED);
-
-                if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-                    DrawText("USE FRAGMENTS", zx - 24, z_py - 12, 10, YELLOW);
-                }
-            }
-        }
-
-        if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
-            Color colors[3] = { GREEN, YELLOW, RAYWHITE };
-            for (int i = 0; i < 3; i++) {
-                if (!game->fragments[i].activated) {
-                    float pulse = sinf(GetTime() * 5.0f);
-                    Vector2 fPos = game->fragments[i].position;
-                    DrawCircleLines(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, colors[i]);
-                    DrawCircle(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(colors[i], 0.5f));
-                    DrawText(game->fragments[i].name, fPos.x - MeasureText(game->fragments[i].name, 10)/2.0f + TILE_PX/2.0f, fPos.y - 12, 10, colors[i]);
-                }
-            }
-        }
-
-        for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
-            if (game->enemyProjectiles[i].active) {
-                Vector2 p = game->enemyProjectiles[i].position;
-                float r = game->enemyProjectiles[i].isBig ? 12.0f : 5.0f;
-                Color innerCol = game->enemyProjectiles[i].isBig ? PURPLE : ORANGE;
-                Color outerCol = game->enemyProjectiles[i].isBig ? MAGENTA : RED;
-                DrawCircle(p.x, p.y, r, outerCol);
-                DrawCircle(p.x, p.y, r * 0.6f, innerCol);
-                DrawCircle(p.x, p.y, r * 0.3f, YELLOW);
-            }
-        }
-
-        if (game->player.isAimingSuperpower) {
-            float px = game->player.position.x + TILE_PX/2.0f;
-            float py = game->player.position.y + TILE_PX/2.0f;
-            DrawCircle(px, py, 5.0f * TILE_PX, ColorAlpha(RED, 0.3f));
-        }
-
-        if (game->player.radiusBlastTimer > 0.0f) {
-            float px = game->player.position.x + TILE_PX/2.0f;
-            float py = game->player.position.y + TILE_PX/2.0f;
-            float maxRadius = 5.0f * TILE_PX;
-            float currentRadius = maxRadius * (1.0f - (game->player.radiusBlastTimer / 0.5f));
-            DrawCircleLines(px, py, currentRadius, ORANGE);
-            DrawCircleLines(px, py, currentRadius + 2.0f, RED);
-        }
-
-        Player_Draw(&game->player, game->playerTileset, game->playerTilesPerRow);
-
-        if (game->player.isAttacking && game->player.attackTimer > 0.0f) {
-            int pCol = game->player.gridX;
-            int pRow = game->player.gridY;
-            int dx = 0, dy = 0;
-            if (game->player.direction == DIR_UP) dy = -1;
-            else if (game->player.direction == DIR_DOWN) dy = 1;
-            else if (game->player.direction == DIR_LEFT) dx = -1;
-            else if (game->player.direction == DIR_RIGHT) dx = 1;
-            
-            float rx = (pCol + dx) * TILE_PX;
-            float ry = (pRow + dy) * TILE_PX;
-            float rw = TILE_PX;
-            float rh = TILE_PX;
-            if (dx != 0) rw = TILE_PX * 2.0f;
-            if (dy != 0) rh = TILE_PX * 2.0f;
-            if (dx == -1) rx = (pCol - 2) * TILE_PX;
-            if (dy == -1) ry = (pRow - 2) * TILE_PX;
-            
-            for (int i = 0; i < 6; i++) {
-                float ox = rx + GetRandomValue(-2, 2);
-                float oy = ry + GetRandomValue(-2, 2);
-                Color fColor = (i % 3 == 0) ? GOLD : ((i % 2 == 0) ? ORANGE : RED);
-                DrawRectangle(ox, oy, rw, rh, ColorAlpha(fColor, 0.6f));
-            }
-        }
-
-        if (game->gunSpawned) {
-            float gx = game->gunCol * TILE_PX;
-            float gy = game->gunRow * TILE_PX;
-            float xco = (float)((133 % game->spritesTilesPerRow) * TILE_SIZE);
-            float yco = (float)((133 / game->spritesTilesPerRow) * TILE_SIZE);
-            Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
-            Rectangle dest = { gx, gy, (float)TILE_PX, (float)TILE_PX };
-            DrawTexturePro(game->spritesTileset, src, dest, (Vector2){0, 0}, 0.0f, ColorAlpha(WHITE, 0.65f));
-            float pulse = sinf(GetTime() * 6.0f);
-            DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f, SKYBLUE);
-            DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, BLUE);
-        }
-
-        for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
-            if (game->playerProjectiles[p].active) {
-                Vector2 pos = game->playerProjectiles[p].position;
-                DrawCircle(pos.x, pos.y, 6.0f, SKYBLUE);
-                DrawCircle(pos.x, pos.y, 4.0f, BLUE);
-                DrawCircle(pos.x, pos.y, 2.0f, WHITE);
-            }
-        }
-
-        EndMode2D();
+        DrawGameplayWorld(game);
     }
 
     if (game->state == STATE_MENU) DrawMenuScreen(game);

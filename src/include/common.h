@@ -250,7 +250,7 @@ void GameHistory_SaveEntry(const char* name, int levelCleared, bool victory);
 void GameHistory_Load(GameHistory* history);
 
 // --- Boss & Combat Helper Functions ---
-void OnZombieDeath(GameState* game, int idx);
+void OnEnemyDeath(GameState* game, int idx);
 bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float size);
 void DamageZombie(GameState* game, int idx, float damage);
 void SpawnGun(GameState* game);

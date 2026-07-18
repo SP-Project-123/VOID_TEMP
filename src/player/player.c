@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "common.h"
+#include <stdlib.h>
 
 // Declare external level tracking variable
 extern int currentLevel;
@@ -117,6 +118,24 @@ void Player_Draw(const Player* self, Texture2D tileset, int tilesPerRow) {
         } else {
             DrawRectangle(swordRect.x + 2, swordRect.y + 1, swordRect.width - 4, swordRect.height - 2, ORANGE);
             DrawRectangle(swordRect.x + 4, swordRect.y + 1, swordRect.width - 8, swordRect.height - 2, GOLD);
+        }
+    }
+}
+
+void SpawnGun(GameState* game) {
+    game->gunSpawned = false;
+    for (int attempt = 0; attempt < 100; attempt++) {
+        int r = GetRandomValue(1, MAP_HEIGHT - 2);
+        int c = GetRandomValue(1, MAP_WIDTH - 2);
+        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
+            int pCol = (int)(game->player.position.x / TILE_PX);
+            int pRow = (int)(game->player.position.y / TILE_PX);
+            if (abs(r - pRow) + abs(c - pCol) >= 3) {
+                game->gunRow = r;
+                game->gunCol = c;
+                game->gunSpawned = true;
+                break;
+            }
         }
     }
 }
