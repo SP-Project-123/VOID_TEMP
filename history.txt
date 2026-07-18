@@ -11,3 +11,6 @@ hh - Level 2 Cleared
 hh - Level 3 Cleared (Victory)
 hh - Level 1 Cleared
 hh - Level 2 Cleared
+hj - Level 2 Cleared
+gg\ - Level 3 Cleared
+ - Level 1 Cleared

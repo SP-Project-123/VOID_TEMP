@@ -168,41 +168,86 @@ void GameState_Init(GameState* self) {
     PlayMusicStream(self->bgMusic);
 }
 
+static const LevelConfig g_levelConfigs[4] = {
+    { "map1.csv",     "tilemap_packed.png",        "OBJ: Find Mayor in Neo Ohio" },
+    { "map2.csv",     "spirites_tilepacked.png",   "OBJ: Defeat Ohio Rat King" },
+    { "map3.csv",     "tilemap_packed3.png",       "OBJ: Defeat Doom Scroller & Brainrot God" },
+    { "finalmap.csv", "finalmap_packed.png",       "OBJ: Escape the Collapsing Center!" }
+};
+
+void LoadLevel(GameState* game, int levelIndex) {
+    if (levelIndex < 0 || levelIndex >= 4) return;
+    currentLevel = levelIndex;
+
+    // Unload previous map tileset texture from VRAM
+    if (game->map.tileset.id > 0) {
+        UnloadTexture(game->map.tileset);
+        game->map.tileset.id = 0;
+    }
+    Tilemap_Load(&game->map, g_levelConfigs[levelIndex].csvMap, g_levelConfigs[levelIndex].tilesetPng);
+
+    Player_Init(&game->player);
+    if (levelIndex > 0) game->player.hasWeapon = true;
+
+    // Default starting grid positions per level
+    int startCol = 5, startRow = 5;
+    if (levelIndex == 1) { startCol = 5; startRow = 3; }
+    else if (levelIndex == 2) { startCol = 5; startRow = 5; }
+    else if (levelIndex == 3) { startCol = 2; startRow = 2; }
+
+    // Fallback search to guarantee player spawns on a valid walkable path tile
+    if (!Tilemap_IsWalkable(&game->map, startCol * TILE_PX, startRow * TILE_PX)) {
+        bool found = false;
+        for (int r = 0; r < MAP_HEIGHT && !found; r++) {
+            for (int c = 0; c < MAP_WIDTH && !found; c++) {
+                if (Tilemap_IsWalkable(&game->map, c * TILE_PX, r * TILE_PX)) {
+                    startCol = c;
+                    startRow = r;
+                    found = true;
+                }
+            }
+        }
+    }
+
+    game->player.position.x = startCol * TILE_PX;
+    game->player.position.y = startRow * TILE_PX;
+    game->player.gridX = startCol;
+    game->player.gridY = startRow;
+
+    game->state = (levelIndex == 0) ? STATE_EXPLORING : STATE_SURVIVAL;
+    game->zombieTimer = 0.0f;
+    game->zombieSpawnTimer = 0.0f;
+    for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+    for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
+    for (int e = 0; e < MAX_ENEMY_PROJECTILES; e++) game->enemyProjectiles[e].active = false;
+
+    if (levelIndex == 1) {
+        SpawnZombie(game);
+        SpawnZombie(game);
+        SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
+    } else if (levelIndex == 2) {
+        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
+    }
+
+    game->hasGun = false;
+    game->gunSpawned = false;
+    game->gunSpawnTimer = 4.0f;
+    game->gunAbilityTimer = 0.0f;
+    game->startTextTimer = 4.0f;
+
+    game->checkpointPosition = game->player.position;
+    game->checkpointLevel = currentLevel;
+    game->checkpointState = game->state;
+    game->checkpointActive = true;
+}
+
 void GameState_TransitionFromCutscene(GameState* game) {
     if (game->cutsceneTargetState != (GameMode)-1) {
-        currentLevel = game->cutsceneTargetLevel;
-        if (currentLevel == 1) {
-            UnloadTexture(game->map.tileset);
-            Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
-            Player_Init(&game->player);
-            game->player.hasWeapon = true;
-            game->state = game->cutsceneTargetState;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            SpawnZombie(game);
-            SpawnZombie(game);
-            SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
-            game->hasGun = false;
-            game->gunSpawned = false;
-            game->gunSpawnTimer = 4.0f;
-            game->gunAbilityTimer = 0.0f;
-            for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-            game->startTextTimer = 4.0f;
-            game->checkpointPosition = game->player.position;
-            game->checkpointLevel = currentLevel;
-            game->checkpointState = game->cutsceneTargetState;
-            game->checkpointActive = true;
-        }
+        LoadLevel(game, game->cutsceneTargetLevel);
         game->cutsceneTargetState = (GameMode)-1;
     } else {
-        game->state = STATE_EXPLORING;
+        LoadLevel(game, 0);
         game->lives = 3;
-        game->checkpointPosition = game->player.position;
-        game->checkpointLevel = currentLevel;
-        game->checkpointState = STATE_EXPLORING;
-        game->checkpointActive = true;
-        game->startTextTimer = 4.0f;
     }
     PlayMusicStream(game->bgMusic);
 }
@@ -222,77 +267,7 @@ void UpdateGame(GameState* game, float dt) {
     if (game->startTextTimer > 0.0f) game->startTextTimer -= dt;
 
     if (IsKeyPressed(KEY_M) && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL || game->state == STATE_CUTSCENE)) {
-        if (currentLevel == 0) {
-            currentLevel = 1;
-            UnloadTexture(game->map.tileset);
-            Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
-            Player_Init(&game->player);
-            game->state = STATE_SURVIVAL;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            SpawnZombie(game);
-            SpawnZombie(game);
-            SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
-            game->hasGun = false;
-            game->gunSpawned = false;
-            game->gunSpawnTimer = 4.0f;
-            game->gunAbilityTimer = 0.0f;
-            for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-            game->startTextTimer = 4.0f;
-        } else if (currentLevel == 1) {
-            currentLevel = 2;
-            UnloadTexture(game->map.tileset);
-            Tilemap_Load(&game->map, "map3.csv", "tilemap_packed3.png");
-            Player_Init(&game->player);
-            game->state = STATE_SURVIVAL;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
-            game->hasGun = false;
-            game->gunSpawned = false;
-            game->gunSpawnTimer = 4.0f;
-            game->gunAbilityTimer = 0.0f;
-            for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-            game->startTextTimer = 4.0f;
-        } else if (currentLevel == 2) {
-            currentLevel = 3;
-            UnloadTexture(game->map.tileset);
-            Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
-            Player_Init(&game->player);
-            game->player.position.x = 2.0f * TILE_PX;
-            game->player.position.y = 2.0f * TILE_PX;
-            game->player.gridX = 2;
-            game->player.gridY = 2;
-            game->state = STATE_SURVIVAL;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            game->startTextTimer = 4.0f;
-        } else {
-            currentLevel = 0;
-            game->hasGun = false;
-            game->gunSpawned = false;
-            game->gunSpawnTimer = 4.0f;
-            game->gunAbilityTimer = 0.0f;
-            for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-            UnloadTexture(game->map.tileset);
-            Tilemap_Load(&game->map, "map1.csv", "tilemap_packed.png");
-            for (int y = 0; y < MAP_HEIGHT; y++) {
-                for (int x = 0; x < MAP_WIDTH; x++) {
-                    int tid = game->map.tiles[y][x];
-                    if (tid == 283 || tid == 306 || tid == 308 || tid == 355) game->map.tiles[y][x] = 20;
-                }
-            }
-            game->map.tiles[game->mayorRow][game->mayorCol] = 283;
-            Player_Init(&game->player);
-            game->state = STATE_EXPLORING;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            game->startTextTimer = 4.0f;
-        }
+        LoadLevel(game, (currentLevel + 1) % 4);
     }
 
     int pCol = (int)(game->player.position.x / TILE_PX);
@@ -630,29 +605,7 @@ void UpdateGame(GameState* game, float dt) {
                         game->cutsceneTargetState = STATE_SURVIVAL;
                     } else if (currentLevel == 1) {
                         GameHistory_SaveEntry(game->playerName, 2, false);
-                        currentLevel = 2;
-                        UnloadTexture(game->map.tileset);
-                        Tilemap_Load(&game->map, "map3.csv", "tilemap_packed3.png");
-                        
-                        Player_Init(&game->player);
-                        game->state = STATE_SURVIVAL;
-                        game->zombieTimer = 0.0f;
-                        game->zombieSpawnTimer = 0.0f;
-                        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-                        
-                        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
-                        
-                        game->hasGun = false;
-                        game->gunSpawned = false;
-                        game->gunSpawnTimer = 4.0f;
-                        game->gunAbilityTimer = 0.0f;
-                        for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-                        game->startTextTimer = 4.0f;
-
-                        game->checkpointPosition = game->player.position;
-                        game->checkpointLevel = currentLevel;
-                        game->checkpointState = STATE_SURVIVAL;
-                        game->checkpointActive = true;
+                        LoadLevel(game, 2);
                     } else if (currentLevel == 3) {
                         GameHistory_SaveEntry(game->playerName, 4, true);
                         game->state = STATE_WIN;
@@ -728,19 +681,14 @@ void UpdateGame(GameState* game, float dt) {
                     game->player.health = 100.0f;
                     
                     if (currentLevel != game->checkpointLevel) {
-                        currentLevel = game->checkpointLevel;
-                        UnloadTexture(game->map.tileset);
-                        if (currentLevel == 0) Tilemap_Load(&game->map, "map1.csv", "tilemap_packed.png");
-                        else if (currentLevel == 1) Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
-                        else if (currentLevel == 2) Tilemap_Load(&game->map, "map3.csv", "tilemap_packed3.png");
-                        else Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
+                        LoadLevel(game, game->checkpointLevel);
+                    } else {
+                        game->player.position = game->checkpointPosition;
+                        game->player.gridX = (int)(game->player.position.x / TILE_PX);
+                        game->player.gridY = (int)(game->player.position.y / TILE_PX);
+                        game->state = game->checkpointState;
+                        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
                     }
-                    
-                    game->player.position = game->checkpointPosition;
-                    game->player.gridX = (int)(game->player.position.x / TILE_PX);
-                    game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                    game->state = game->checkpointState;
-                    for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
                 } else {
                     GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
                     game->state = STATE_GAMEOVER;

@@ -138,7 +138,7 @@ EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
         case ENEMY_RAT_KING:
             props.maxHealth = 300.0f;
             props.moveSpeed = 40.0f;
-            props.baseTileId = 23;
+            props.baseTileId = 24;
             props.scale = 2.5f;
             props.color = PURPLE;
             props.hitboxOffset = 20.0f;
@@ -146,7 +146,7 @@ EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
         case ENEMY_DOOM_SCROLLER:
             props.maxHealth = 400.0f;
             props.moveSpeed = 0.0f;
-            props.baseTileId = 306;
+            props.baseTileId = 9;
             props.scale = 3.0f;
             props.color = RED;
             props.hitboxOffset = 28.0f;
@@ -154,7 +154,7 @@ EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
         case ENEMY_ALGORITHM:
             props.maxHealth = 200.0f;
             props.moveSpeed = 45.0f;
-            props.baseTileId = 308;
+            props.baseTileId = 13;
             props.scale = 2.5f;
             props.color = VIOLET;
             props.hitboxOffset = 20.0f;
@@ -162,7 +162,7 @@ EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
         case ENEMY_BRAINROT_GOD:
             props.maxHealth = 600.0f;
             props.moveSpeed = 50.0f;
-            props.baseTileId = 27;
+            props.baseTileId = 11;
             props.scale = 4.0f;
             props.color = WHITE;
             props.hitboxOffset = 40.0f;

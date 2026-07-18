@@ -106,6 +106,7 @@ static void ShootSpiderProjectile(GameState* game, Vector2 startPos, Vector2 tar
     game->enemyProjectiles[projSlot].velocity = (Vector2){ (dx / len) * speed, (dy / len) * speed };
     game->enemyProjectiles[projSlot].active = true;
     game->enemyProjectiles[projSlot].isBig = isBig;
+    game->enemyProjectiles[projSlot].lifeTimer = 2.5f;
 }
 
 static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
@@ -129,13 +130,16 @@ static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
 }
 
 void UpdateZombies(GameState* game, float dt) {
-    // 1. Spider & Rat King Firing Logic
+    // 1. Ranged Enemy & Boss Firing Logic (Single Unified Attack Type)
     for (int i = 0; i < MAX_ZOMBIES; i++) {
         if (!game->zombies[i].active) continue;
 
-        if (game->zombies[i].type == ENEMY_SPIDER || game->zombies[i].type == ENEMY_RAT_KING) {
+        if (game->zombies[i].type == ENEMY_SPIDER ||
+            game->zombies[i].type == ENEMY_RAT_KING ||
+            game->zombies[i].type == ENEMY_DOOM_SCROLLER ||
+            game->zombies[i].type == ENEMY_BRAINROT_GOD) {
             game->zombies[i].shootTimer += dt;
-            float interval = (game->zombies[i].type == ENEMY_RAT_KING) ? 1.5f : 1.8f;
+            float interval = (game->zombies[i].type == ENEMY_SPIDER) ? 1.8f : 1.5f;
             if (game->zombies[i].shootTimer >= interval) {
                 game->zombies[i].shootTimer = 0.0f;
                 Vector2 startPos = {
@@ -146,7 +150,8 @@ void UpdateZombies(GameState* game, float dt) {
                     game->player.position.x + TILE_PX / 2.0f,
                     game->player.position.y + TILE_PX / 2.0f
                 };
-                ShootSpiderProjectile(game, startPos, targetPos, (game->zombies[i].type == ENEMY_RAT_KING));
+                bool isBig = (game->zombies[i].type == ENEMY_RAT_KING || game->zombies[i].type == ENEMY_BRAINROT_GOD);
+                ShootSpiderProjectile(game, startPos, targetPos, isBig);
             }
         }
     }
@@ -155,6 +160,12 @@ void UpdateZombies(GameState* game, float dt) {
     for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
         if (!game->enemyProjectiles[i].active) continue;
 
+        game->enemyProjectiles[i].lifeTimer -= dt;
+        if (game->enemyProjectiles[i].lifeTimer <= 0.0f) {
+            game->enemyProjectiles[i].active = false;
+            continue;
+        }
+
         game->enemyProjectiles[i].position.x += game->enemyProjectiles[i].velocity.x * dt;
         game->enemyProjectiles[i].position.y += game->enemyProjectiles[i].velocity.y * dt;
 
@@ -162,6 +173,16 @@ void UpdateZombies(GameState* game, float dt) {
         if (pos.x < 0 || pos.x > MAP_WIDTH * TILE_PX || pos.y < 0 || pos.y > MAP_HEIGHT * TILE_PX) {
             game->enemyProjectiles[i].active = false;
             continue;
+        }
+
+        int col = (int)(pos.x / TILE_PX);
+        int row = (int)(pos.y / TILE_PX);
+        if (row >= 0 && row < MAP_HEIGHT && col >= 0 && col < MAP_WIDTH) {
+            int tileType = GetTileType(game->map.tiles[row][col]);
+            if (tileType == TILE_WALL || tileType == TILE_CAR) {
+                game->enemyProjectiles[i].active = false;
+                continue;
+            }
         }
 
         Vector2 pCenter = { game->player.position.x + TILE_PX / 2.0f, game->player.position.y + TILE_PX / 2.0f };
@@ -213,82 +234,7 @@ void UpdateZombies(GameState* game, float dt) {
             continue;
         }
 
-        // Custom Boss attacks cycle
-        if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-            game->zombies[i].shootTimer += dt;
-            float t = game->zombies[i].shootTimer;
-            
-            // 1. Skibidi Blast (Rapid fireballs at 1.0s, 1.2s, 1.4s)
-            if ((t >= 1.0f && t < 1.05f) || (t >= 1.2f && t < 1.25f) || (t >= 1.4f && t < 1.45f)) {
-                static float lastBlastTime = 0.0f;
-                if (GetTime() - lastBlastTime > 0.15f) {
-                    lastBlastTime = GetTime();
-                    Vector2 startPos = { game->zombies[i].position.x + TILE_PX/2.0f, game->zombies[i].position.y + TILE_PX/2.0f };
-                    Vector2 targetPos = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
-                    ShootSpiderProjectile(game, startPos, targetPos, true);
-                }
-            }
-            
-            // 2. Ohio Storm (Falling lightning at 2.5s)
-            if (t >= 2.5f && t < 2.55f) {
-                static float lastStormTime = 0.0f;
-                if (GetTime() - lastStormTime > 0.5f) {
-                    lastStormTime = GetTime();
-                    for (int pNum = 0; pNum < 3; pNum++) {
-                        float offsetX = (pNum - 1) * 32.0f;
-                        Vector2 startPos = { game->player.position.x + TILE_PX/2.0f + offsetX, game->player.position.y - 120.0f };
-                        Vector2 targetPos = { game->player.position.x + TILE_PX/2.0f + offsetX, game->player.position.y + TILE_PX/2.0f };
-                        ShootSpiderProjectile(game, startPos, targetPos, true);
-                    }
-                }
-            }
-            
-            // 3. Sigma Shockwave (Expanding energy circle at 4.0s)
-            if (t >= 4.0f && t < 4.05f) {
-                static float lastWaveTime = 0.0f;
-                if (GetTime() - lastWaveTime > 0.5f) {
-                    lastWaveTime = GetTime();
-                    Vector2 zCenter = { game->zombies[i].position.x + TILE_PX/2.0f, game->zombies[i].position.y + TILE_PX/2.0f };
-                    Vector2 pCenter = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
-                    float dist = sqrtf((zCenter.x - pCenter.x)*(zCenter.x - pCenter.x) + (zCenter.y - pCenter.y)*(zCenter.y - pCenter.y));
-                    if (dist < 120.0f) {
-                        game->player.health -= 30.0f;
-                        PlaySound(game->hitSound);
-                    }
-                }
-            }
-            
-            if (t >= 5.0f) {
-                game->zombies[i].shootTimer = 0.0f;
-            }
-        }
-        else if (game->zombies[i].type == ENEMY_DOOM_SCROLLER) {
-            game->zombies[i].shootTimer += dt;
-            if (game->zombies[i].shootTimer >= 1.5f) {
-                game->zombies[i].shootTimer = 0.0f;
-                Vector2 startPos = {
-                    game->zombies[i].position.x + TILE_PX / 2.0f,
-                    game->zombies[i].position.y + TILE_PX / 2.0f
-                };
-                Vector2 dirs[4] = { {0, -1}, {0, 1}, {-1, 0}, {1, 0} };
-                for (int d = 0; d < 4; d++) {
-                    int projSlot = -1;
-                    for (int p = 0; p < MAX_ENEMY_PROJECTILES; p++) {
-                        if (!game->enemyProjectiles[p].active) {
-                            projSlot = p;
-                            break;
-                        }
-                    }
-                    if (projSlot != -1) {
-                        float speed = 160.0f;
-                        game->enemyProjectiles[projSlot].position = startPos;
-                        game->enemyProjectiles[projSlot].velocity = (Vector2){ dirs[d].x * speed, dirs[d].y * speed };
-                        game->enemyProjectiles[projSlot].active = true;
-                        game->enemyProjectiles[projSlot].isBig = false;
-                    }
-                }
-            }
-        }
+
 
         float dx = game->player.position.x - game->zombies[i].position.x;
         float dy = game->player.position.y - game->zombies[i].position.y;

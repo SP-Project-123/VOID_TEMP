@@ -404,10 +404,13 @@ void DrawHUD(const GameState* game) {
         for (int i = 0; i < MAX_ZOMBIES; i++) {
             if (game->zombies[i].active) activeCount++;
         }
-        const char* obj = (currentLevel == 0) ? "OBJ: Defeat Ohio Rat King" : 
-                          (currentLevel == 1) ? "OBJ: Defeat Doom Scroller" : 
-                          (currentLevel == 2) ? "OBJ: Defeat Brainrot God" : 
-                                                "OBJ: Escape the Collapsing Center!";
+        static const char* objs[] = {
+            "OBJ: Defeat Ohio Rat King",
+            "OBJ: Defeat Doom Scroller",
+            "OBJ: Defeat Brainrot God",
+            "OBJ: Escape the Collapsing Center!"
+        };
+        const char* obj = (currentLevel >= 0 && currentLevel < 4) ? objs[currentLevel] : "";
         DrawText(obj, 20, 95, 14, YELLOW);
         DrawText(TextFormat("(Enemies: %d)", activeCount), 220, 95, 14, ORANGE);
     }

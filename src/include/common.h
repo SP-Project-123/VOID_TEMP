@@ -107,7 +107,14 @@ typedef struct {
     Vector2 velocity;
     bool active;
     bool isBig;
+    float lifeTimer;
 } EnemyProjectile;
+
+typedef struct {
+    const char* csvMap;
+    const char* tilesetPng;
+    const char* objectiveText;
+} LevelConfig;
 
 // --- Environmental Effects ---
 #define MAX_ASH_EFFECTS 50
@@ -215,6 +222,7 @@ typedef struct {
 
 // --- Global Level Tracker ---
 extern int currentLevel;
+void LoadLevel(GameState* game, int levelIndex);
 
 // --- Game History Structure & Functions ---
 #define MAX_HISTORY_ENTRIES 8
