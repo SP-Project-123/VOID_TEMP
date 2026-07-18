@@ -110,11 +110,16 @@ void GameState_Init(GameState* self) {
     self->gunSpawned = false;
     self->gunAbilityTimer = 0.0f;
     self->gunSpawnTimer = 4.0f;
-    for (int i = 0; i < 6; i++) {
-        self->bosses[i].spawned = false;
-        self->bosses[i].defeated = false;
-        self->bosses[i].showLog = false;
-    }
+    self->bossSpawned = false;
+    self->bossDefeated = false;
+    self->showBossLog = false;
+    self->doomScrollerSpawned = false;
+    self->doomScrollerDefeated = false;
+    self->showDoomScrollerLog = false;
+    self->algorithmSpawned = false;
+    self->algorithmDefeated = false;
+    self->brainrotGodSpawned = false;
+    self->brainrotGodDefeated = false;
     self->curiosityActivated = false;
     self->knowledgeActivated = false;
     self->truthActivated = false;
@@ -160,12 +165,12 @@ void GameState_Init(GameState* self) {
 
 // --- State Machine Update Routine ---
 void UpdateGame(GameState* game, float dt) {
-    if (game->bosses[ENEMY_RAT_KING].showLog) {
-        if (IsKeyPressed(KEY_ENTER)) game->bosses[ENEMY_RAT_KING].showLog = false;
+    if (game->showBossLog) {
+        if (IsKeyPressed(KEY_ENTER)) game->showBossLog = false;
         return;
     }
-    if (game->bosses[ENEMY_DOOM_SCROLLER].showLog) {
-        if (IsKeyPressed(KEY_ENTER)) game->bosses[ENEMY_DOOM_SCROLLER].showLog = false;
+    if (game->showDoomScrollerLog) {
+        if (IsKeyPressed(KEY_ENTER)) game->showDoomScrollerLog = false;
         return;
     }
 
@@ -187,6 +192,9 @@ void UpdateGame(GameState* game, float dt) {
             SpawnZombie(game);
             SpawnZombie(game);
             SpawnRatKing(game, 10, 10);
+            game->bossSpawned = true;
+            game->bossDefeated = false;
+            game->showBossLog = false;
             game->hasGun = false;
             game->gunSpawned = false;
             game->gunSpawnTimer = 4.0f;
@@ -203,6 +211,9 @@ void UpdateGame(GameState* game, float dt) {
             game->zombieSpawnTimer = 0.0f;
             for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
             SpawnDoomScroller(game);
+            game->doomScrollerSpawned = true;
+            game->doomScrollerDefeated = false;
+            game->showDoomScrollerLog = false;
             game->hasGun = false;
             game->gunSpawned = false;
             game->gunSpawnTimer = 4.0f;
@@ -488,8 +499,8 @@ void UpdateGame(GameState* game, float dt) {
             Player_Update(&game->player, &game->map, dt);
 
             bool canSpawn = true;
-            if (currentLevel == 1 && game->bosses[ENEMY_RAT_KING].defeated) canSpawn = false;
-            if (currentLevel == 2 && game->bosses[ENEMY_BRAINROT_GOD].defeated) canSpawn = false;
+            if (currentLevel == 1 && game->bossDefeated) canSpawn = false;
+            if (currentLevel == 2 && game->brainrotGodDefeated) canSpawn = false;
 
             game->zombieSpawnTimer += dt;
             if (game->zombieSpawnTimer >= 2.0f) {
@@ -518,6 +529,9 @@ void UpdateGame(GameState* game, float dt) {
                         SpawnZombie(game);
                         SpawnZombie(game);
                         SpawnRatKing(game, 10, 10);
+                        game->bossSpawned = true;
+                        game->bossDefeated = false;
+                        game->showBossLog = false;
                         game->hasGun = false;
                         game->gunSpawned = false;
                         game->gunSpawnTimer = 4.0f;
@@ -542,6 +556,10 @@ void UpdateGame(GameState* game, float dt) {
                         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
                         
                         SpawnDoomScroller(game);
+                        game->doomScrollerSpawned = true;
+                        game->doomScrollerDefeated = false;
+                        game->showDoomScrollerLog = false;
+                        
                         game->hasGun = false;
                         game->gunSpawned = false;
                         game->gunSpawnTimer = 4.0f;

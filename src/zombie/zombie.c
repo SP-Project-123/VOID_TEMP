@@ -277,7 +277,7 @@ void UpdateZombies(GameState* game, float dt) {
     }
 }
 
-static void SpawnBoss(GameState* game, EnemyType type, float health, int customRow, int customCol) {
+void SpawnDoomScroller(GameState* game) {
     int slot = -1;
     for (int i = 0; i < MAX_ZOMBIES; i++) {
         if (!game->zombies[i].active) {
@@ -287,46 +287,78 @@ static void SpawnBoss(GameState* game, EnemyType type, float health, int customR
     }
     if (slot == -1) return;
 
-    int r = customRow;
-    int c = customCol;
-
-    if (customRow < 0 || customCol < 0) {
-        for (int attempt = 0; attempt < 100; attempt++) {
-            r = GetRandomValue(2, MAP_HEIGHT - 3);
-            c = GetRandomValue(2, MAP_WIDTH - 3);
-            if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-                break;
-            }
+    for (int attempt = 0; attempt < 100; attempt++) {
+        int r = GetRandomValue(2, MAP_HEIGHT - 3);
+        int c = GetRandomValue(2, MAP_WIDTH - 3);
+        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
+            game->zombies[slot].row = r;
+            game->zombies[slot].col = c;
+            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
+            game->zombies[slot].active = true;
+            game->zombies[slot].health = 400.0f;
+            game->zombies[slot].maxHealth = 400.0f;
+            game->zombies[slot].type = ENEMY_DOOM_SCROLLER;
+            game->zombies[slot].shootTimer = 0.0f;
+            game->doomScrollerSpawned = true;
+            break;
         }
     }
-
-    game->zombies[slot].row = r;
-    game->zombies[slot].col = c;
-    game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-    game->zombies[slot].active = true;
-    game->zombies[slot].health = health;
-    game->zombies[slot].maxHealth = health;
-    game->zombies[slot].type = type;
-    game->zombies[slot].shootTimer = 0.0f;
-    game->bosses[type].spawned = true;
-    game->bosses[type].defeated = false;
-    game->bosses[type].showLog = false;
-}
-
-void SpawnRatKing(GameState* game, int r, int c) {
-    SpawnBoss(game, ENEMY_RAT_KING, 300.0f, r, c);
-}
-
-void SpawnDoomScroller(GameState* game) {
-    SpawnBoss(game, ENEMY_DOOM_SCROLLER, 400.0f, -1, -1);
 }
 
 void SpawnAlgorithm(GameState* game) {
-    SpawnBoss(game, ENEMY_ALGORITHM, 200.0f, -1, -1);
+    int slot = -1;
+    for (int i = 0; i < MAX_ZOMBIES; i++) {
+        if (!game->zombies[i].active) {
+            slot = i;
+            break;
+        }
+    }
+    if (slot == -1) return;
+
+    for (int attempt = 0; attempt < 100; attempt++) {
+        int r = GetRandomValue(2, MAP_HEIGHT - 3);
+        int c = GetRandomValue(2, MAP_WIDTH - 3);
+        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
+            game->zombies[slot].row = r;
+            game->zombies[slot].col = c;
+            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
+            game->zombies[slot].active = true;
+            game->zombies[slot].health = 200.0f;
+            game->zombies[slot].maxHealth = 200.0f;
+            game->zombies[slot].type = ENEMY_ALGORITHM;
+            game->zombies[slot].shootTimer = 0.0f;
+            game->algorithmSpawned = true;
+            break;
+        }
+    }
 }
 
 void SpawnBrainrotGod(GameState* game) {
-    SpawnBoss(game, ENEMY_BRAINROT_GOD, 600.0f, -1, -1);
+    int slot = -1;
+    for (int i = 0; i < MAX_ZOMBIES; i++) {
+        if (!game->zombies[i].active) {
+            slot = i;
+            break;
+        }
+    }
+    if (slot == -1) return;
+
+    for (int attempt = 0; attempt < 100; attempt++) {
+        int r = GetRandomValue(2, MAP_HEIGHT - 3);
+        int c = GetRandomValue(2, MAP_WIDTH - 3);
+        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
+            game->zombies[slot].row = r;
+            game->zombies[slot].col = c;
+            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
+            game->zombies[slot].active = true;
+            game->zombies[slot].health = 600.0f;
+            game->zombies[slot].maxHealth = 600.0f;
+            game->zombies[slot].type = ENEMY_BRAINROT_GOD;
+            game->zombies[slot].shootTimer = 0.0f;
+            game->brainrotGodSpawned = true;
+            break;
+        }
+    }
 }
 
 void SpawnMemoryFragments(GameState* game) {

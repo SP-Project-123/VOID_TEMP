@@ -172,12 +172,16 @@ typedef struct {
     int gunCol;
     float gunAbilityTimer;
     float gunSpawnTimer;
-    typedef struct {
-        bool spawned;
-        bool defeated;
-        bool showLog;
-    } BossState;
-    BossState bosses[6];
+    bool bossSpawned;
+    bool bossDefeated;
+    bool showBossLog;
+    bool doomScrollerSpawned;
+    bool doomScrollerDefeated;
+    bool showDoomScrollerLog;
+    bool algorithmSpawned;
+    bool algorithmDefeated;
+    bool brainrotGodSpawned;
+    bool brainrotGodDefeated;
     bool curiosityActivated;
     bool knowledgeActivated;
     bool truthActivated;

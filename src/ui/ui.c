@@ -363,7 +363,7 @@ void DrawHUD(const GameState* game) {
 }
 
 void DrawStoryOverlays(const GameState* game) {
-    if (game->bosses[ENEMY_RAT_KING].showLog) {
+    if (game->showBossLog) {
         int boxWidth = 600;
         int boxHeight = 220;
         int boxX = (GetScreenWidth() - boxWidth) / 2;
@@ -381,7 +381,7 @@ void DrawStoryOverlays(const GameState* game) {
         DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
     }
     
-    if (game->bosses[ENEMY_DOOM_SCROLLER].showLog) {
+    if (game->showDoomScrollerLog) {
         int boxWidth = 600;
         int boxHeight = 220;
         int boxX = (GetScreenWidth() - boxWidth) / 2;

@@ -14,8 +14,8 @@ void OnZombieDeath(GameState* game, int idx) {
     }
 
     if (game->zombies[idx].type == ENEMY_RAT_KING) {
-        game->bosses[ENEMY_RAT_KING].defeated = true;
-        game->bosses[ENEMY_RAT_KING].showLog = true;
+        game->bossDefeated = true;
+        game->showBossLog = true;
         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
         int r = game->zombies[idx].row;
         int c = game->zombies[idx].col;
@@ -23,21 +23,21 @@ void OnZombieDeath(GameState* game, int idx) {
         if (c + 1 < MAP_WIDTH) game->map.tiles[r][c + 1] = 237;
     }
     else if (game->zombies[idx].type == ENEMY_DOOM_SCROLLER) {
-        game->bosses[ENEMY_DOOM_SCROLLER].defeated = true;
-        game->bosses[ENEMY_DOOM_SCROLLER].showLog = true;
+        game->doomScrollerDefeated = true;
+        game->showDoomScrollerLog = true;
         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
         SpawnAlgorithm(game);
         PlaySound(game->blastSound);
     }
     else if (game->zombies[idx].type == ENEMY_ALGORITHM) {
-        game->bosses[ENEMY_ALGORITHM].defeated = true;
+        game->algorithmDefeated = true;
         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
         SpawnBrainrotGod(game);
         SpawnMemoryFragments(game);
         PlaySound(game->blastSound);
     }
     else if (game->zombies[idx].type == ENEMY_BRAINROT_GOD) {
-        game->bosses[ENEMY_BRAINROT_GOD].defeated = true;
+        game->brainrotGodDefeated = true;
         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
         GameHistory_SaveEntry(game->playerName, 3, true);
         game->state = STATE_WIN;
