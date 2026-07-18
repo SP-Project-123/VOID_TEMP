@@ -29,7 +29,6 @@
 // --- Tile Types ---
 #define TILE_GROUND 0
 #define TILE_WALL 1
-#define TILE_CAR 2
 #define TILE_MAYOR 3
 #define TILE_CAVE 4
 

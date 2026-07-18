@@ -204,7 +204,6 @@ Declared in `common.h` (line 217), defined in `game.c` (line 7). This is a **glo
 |---|---|---|
 | `TILE_GROUND` | 0 | Walkable floor |
 | `TILE_WALL` | 1 | Impassable wall |
-| `TILE_CAR` | 2 | Impassable car obstacle |
 | `TILE_MAYOR` | 3 | NPC trigger (Mayor) |
 | `TILE_CAVE` | 4 | Level exit/transition |
 
@@ -266,6 +265,7 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 | `difficulty` | `int` | 0=Easy, 1=Normal, 2=Hard |
 | `cutsceneTargetState` | `GameMode` | State to transition to after cutscene |
 | `cutsceneTargetLevel` | `int` | Level to load after cutscene |
+| `enemiesKilled` | `int` | Cumulative enemy kill counter |
 
 ### `Player` (common.h:122-142)
 
@@ -695,13 +695,12 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 ### 7.6 `tilemap.c` — Map System
 
 #### `int GetTileType(int tileID)` (line 10)
-- **Purpose**: Classifies a tile ID into one of 5 types. THE core lookup function.
+- **Purpose**: Classifies a tile ID into one of 4 types. THE core lookup function.
 - **Classification order**:
   1. Tile 283 → `TILE_MAYOR`
   2. Tiles 236, 237, 306, 308, 158 → `TILE_CAVE`
-  3. Check against hardcoded car tiles list (19 tiles) → `TILE_CAR`
-  4. Check against level-specific walkable lists → `TILE_GROUND`
-  5. Default → `TILE_WALL`
+  3. Check against level-specific walkable lists → `TILE_GROUND`
+  4. Default → `TILE_WALL`
 - **Level-specific walkable lists**:
   - Level 0: 42 walkable tile IDs
   - Level 1: 32 walkable tile IDs

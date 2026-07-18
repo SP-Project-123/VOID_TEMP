@@ -199,7 +199,7 @@ void LoadLevel(GameState* game, int levelIndex) {
             for (int x = 1; x < MAP_WIDTH - 2; x++) {
                 int type1 = GetTileType(game->map.tiles[y][x]);
                 int type2 = GetTileType(game->map.tiles[y][x+1]);
-                if (type1 != TILE_WALL && type1 != TILE_CAR && type2 != TILE_WALL && type2 != TILE_CAR) {
+                if (type1 != TILE_WALL && type2 != TILE_WALL) {
                     int distSq = (y - 2) * (y - 2) + (x - 2) * (x - 2);
                     if (distSq >= 100) {
                         candidates[candidateCount].r = y;
@@ -380,7 +380,7 @@ static void UpdatePlayerProjectiles(GameState* game, float dt) {
         int cellY = (int)(pos.y / TILE_PX);
         if (cellX >= 0 && cellX < MAP_WIDTH && cellY >= 0 && cellY < MAP_HEIGHT) {
             int type = GetTileType(game->map.tiles[cellY][cellX]);
-            if (type == TILE_WALL || type == TILE_CAR) {
+            if (type == TILE_WALL) {
                 game->playerProjectiles[p].active = false;
                 continue;
             }

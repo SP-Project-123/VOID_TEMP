@@ -13,11 +13,7 @@ int GetTileType(int tileID) {
     // 236, 237, TILE_CAVE_EXIT_L2, 308, and 158 are designated as the Cave exit gate tiles
     if (tileID == 236 || tileID == 237 || tileID == TILE_CAVE_EXIT_L2 || tileID == 308 || tileID == 158) return TILE_CAVE;
     
-    // Designated list of car tile IDs from map1.csv
-    static const int carTiles[] = { 263, 287, 329, 330, 353,324,323,275,276, 354,313,181,101,288,183,347,348,349,350 };
-    for (int i = 0; i < (int)(sizeof(carTiles) / sizeof(carTiles[0])); i++) {
-        if (carTiles[i] == tileID) return TILE_CAR;
-    }
+
 
     // Walkable lists separated by currentLevel
     static const int walkableL1[] = {
@@ -107,7 +103,7 @@ bool Tilemap_IsWalkable(const Tilemap* self, float targetX, float targetY) {
     int tileID = self->tiles[row][col];
     int type = GetTileType(tileID);
 
-    // Predictive Movement: Reject movement into walls or cars
-    if (type == TILE_WALL || type == TILE_CAR) return false;
+    // Predictive Movement: Reject movement into walls
+    if (type == TILE_WALL) return false;
     return true;
 }

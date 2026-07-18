@@ -124,7 +124,7 @@ static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
         if (r < 0 || r >= MAP_HEIGHT || c < 0 || c >= MAP_WIDTH) return false;
         int tileID = map->tiles[r][c];
         int type = GetTileType(tileID);
-        if (type == TILE_WALL || type == TILE_CAR) return false;
+        if (type == TILE_WALL) return false;
     }
     return true;
 }
@@ -179,7 +179,7 @@ void UpdateZombies(GameState* game, float dt) {
         int row = (int)(pos.y / TILE_PX);
         if (row >= 0 && row < MAP_HEIGHT && col >= 0 && col < MAP_WIDTH) {
             int tileType = GetTileType(game->map.tiles[row][col]);
-            if (tileType == TILE_WALL || tileType == TILE_CAR) {
+            if (tileType == TILE_WALL) {
                 game->enemyProjectiles[i].active = false;
                 continue;
             }
