@@ -12,8 +12,10 @@ int main(void) {
 
     const char* file1 = "tilemap_packed.png";
     const char* file2 = "tilemap_packed2.png";
-    const char* file3 = "spirites_tilepacked.png";
-    const char* file4 = "mcpacked.png";
+    const char* file3 = "tilemap_packed3.png";
+    const char* file4 = "finalmap_packed.png";
+    const char* file5 = "spirites_tilepacked.png";
+    const char* file6 = "mcpacked.png";
     const char* activeFile = file1;
 
     Texture2D tileset = LoadTexture(activeFile);
@@ -42,6 +44,18 @@ int main(void) {
         if (IsKeyPressed(KEY_FOUR)) {
             UnloadTexture(tileset);
             activeFile = file4;
+            tileset = LoadTexture(activeFile);
+            tilesPerRow = tileset.width / TILE_SIZE;
+        }
+        if (IsKeyPressed(KEY_FIVE)) {
+            UnloadTexture(tileset);
+            activeFile = file5;
+            tileset = LoadTexture(activeFile);
+            tilesPerRow = tileset.width / TILE_SIZE;
+        }
+        if (IsKeyPressed(KEY_SIX)) {
+            UnloadTexture(tileset);
+            activeFile = file6;
             tileset = LoadTexture(activeFile);
             tilesPerRow = tileset.width / TILE_SIZE;
         }
@@ -98,7 +112,7 @@ int main(void) {
 
         DrawText("TILESET ID VIEWER", hudX + 20, hudY + 15, 16, RED);
         DrawText(TextFormat("File: %s", activeFile), hudX + 20, hudY + 40, 12, LIGHTGRAY);
-        DrawText("Keys: [1] Tile1 | [2] Tile2 | [3] Sprites | [4] MC", hudX + 20, hudY + 58, 11, YELLOW);
+        DrawText("Keys: [1-4] Map 1-4 | [5] Sprites | [6] MC", hudX + 20, hudY + 58, 11, YELLOW);
 
         if (hoveredTileID != -1) {
             DrawText(TextFormat("HOVERED TILE ID: %d", hoveredTileID), hudX + 20, hudY + 80, 14, GREEN);

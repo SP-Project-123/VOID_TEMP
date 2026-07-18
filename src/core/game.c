@@ -54,7 +54,7 @@ void GameState_Init(GameState* self) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int tid = self->map.tiles[y][x];
-            if (tid == 306 || tid == 308 || tid == 355) {
+            if (tid == 283 || tid == 306 || tid == 308 || tid == 355) {
                 self->map.tiles[y][x] = 20;
             }
         }
@@ -87,7 +87,7 @@ void GameState_Init(GameState* self) {
         self->mayorRow = 10;
         self->mayorCol = 10;
     }
-    self->map.tiles[self->mayorRow][self->mayorCol] = 306;
+    self->map.tiles[self->mayorRow][self->mayorCol] = 283;
 
     self->state = STATE_MENU;
     self->zombieTimer = 0.0f;
@@ -110,22 +110,24 @@ void GameState_Init(GameState* self) {
     self->gunSpawned = false;
     self->gunAbilityTimer = 0.0f;
     self->gunSpawnTimer = 4.0f;
-    self->bossSpawned = false;
-    self->bossDefeated = false;
-    self->showBossLog = false;
-    self->doomScrollerSpawned = false;
-    self->doomScrollerDefeated = false;
-    self->showDoomScrollerLog = false;
-    self->algorithmSpawned = false;
-    self->algorithmDefeated = false;
-    self->brainrotGodSpawned = false;
-    self->brainrotGodDefeated = false;
-    self->curiosityActivated = false;
-    self->knowledgeActivated = false;
-    self->truthActivated = false;
-    self->curiosityPos = (Vector2){0, 0};
-    self->knowledgePos = (Vector2){0, 0};
-    self->truthPos = (Vector2){0, 0};
+    for (int i = 0; i < 4; i++) {
+        self->bosses[i].spawned = false;
+        self->bosses[i].defeated = false;
+        self->bosses[i].showLog = false;
+        self->bosses[i].tileId = 0;
+    }
+    self->bosses[BOSS_RAT_KING].tileId = 23;
+    self->bosses[BOSS_DOOM_SCROLLER].tileId = 306;
+    self->bosses[BOSS_ALGORITHM].tileId = 308;
+    self->bosses[BOSS_BRAINROT_GOD].tileId = 27;
+    for (int i = 0; i < 3; i++) {
+        self->fragments[i].activated = false;
+        self->fragments[i].position = (Vector2){0, 0};
+        self->fragments[i].name = "";
+    }
+    self->difficulty = 1;
+    self->cutsceneTargetState = (GameMode)-1;
+    self->cutsceneTargetLevel = 0;
 
     self->bgMusic = LoadMusicStream("resources/bgm.mp3");
     if (FileExists("resources/slash.ogg")) {
@@ -146,7 +148,10 @@ void GameState_Init(GameState* self) {
     self->playerTileset = LoadTexture("tilemap_packed.png");
     self->playerTilesPerRow = self->playerTileset.width / TILE_SIZE;
     if (FileExists("spirites_tilepacked.png")) {
-        self->spritesTileset = LoadTexture("spirites_tilepacked.png");
+        Image img = LoadImage("spirites_tilepacked.png");
+        ImageColorReplace(&img, (Color){34, 35, 35, 255}, BLANK);
+        self->spritesTileset = LoadTextureFromImage(img);
+        UnloadImage(img);
     } else {
         self->spritesTileset = self->playerTileset;
     }
@@ -163,15 +168,52 @@ void GameState_Init(GameState* self) {
     PlayMusicStream(self->bgMusic);
 }
 
+void GameState_TransitionFromCutscene(GameState* game) {
+    if (game->cutsceneTargetState != (GameMode)-1) {
+        currentLevel = game->cutsceneTargetLevel;
+        if (currentLevel == 1) {
+            UnloadTexture(game->map.tileset);
+            Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
+            Player_Init(&game->player);
+            game->player.hasWeapon = true;
+            game->state = game->cutsceneTargetState;
+            game->zombieTimer = 0.0f;
+            game->zombieSpawnTimer = 0.0f;
+            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+            SpawnZombie(game);
+            SpawnZombie(game);
+            SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
+            game->hasGun = false;
+            game->gunSpawned = false;
+            game->gunSpawnTimer = 4.0f;
+            game->gunAbilityTimer = 0.0f;
+            for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
+            game->startTextTimer = 4.0f;
+            game->checkpointPosition = game->player.position;
+            game->checkpointLevel = currentLevel;
+            game->checkpointState = game->cutsceneTargetState;
+            game->checkpointActive = true;
+        }
+        game->cutsceneTargetState = (GameMode)-1;
+    } else {
+        game->state = STATE_EXPLORING;
+        game->lives = 3;
+        game->checkpointPosition = game->player.position;
+        game->checkpointLevel = currentLevel;
+        game->checkpointState = STATE_EXPLORING;
+        game->checkpointActive = true;
+        game->startTextTimer = 4.0f;
+    }
+    PlayMusicStream(game->bgMusic);
+}
+
 // --- State Machine Update Routine ---
 void UpdateGame(GameState* game, float dt) {
-    if (game->showBossLog) {
-        if (IsKeyPressed(KEY_ENTER)) game->showBossLog = false;
-        return;
-    }
-    if (game->showDoomScrollerLog) {
-        if (IsKeyPressed(KEY_ENTER)) game->showDoomScrollerLog = false;
-        return;
+    for (int i = 0; i < 4; i++) {
+        if (game->bosses[i].showLog) {
+            if (IsKeyPressed(KEY_ENTER)) game->bosses[i].showLog = false;
+            return;
+        }
     }
 
     UpdateMusicStream(game->bgMusic);
@@ -191,10 +233,7 @@ void UpdateGame(GameState* game, float dt) {
             for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
             SpawnZombie(game);
             SpawnZombie(game);
-            SpawnRatKing(game, 10, 10);
-            game->bossSpawned = true;
-            game->bossDefeated = false;
-            game->showBossLog = false;
+            SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
             game->hasGun = false;
             game->gunSpawned = false;
             game->gunSpawnTimer = 4.0f;
@@ -210,15 +249,26 @@ void UpdateGame(GameState* game, float dt) {
             game->zombieTimer = 0.0f;
             game->zombieSpawnTimer = 0.0f;
             for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-            SpawnDoomScroller(game);
-            game->doomScrollerSpawned = true;
-            game->doomScrollerDefeated = false;
-            game->showDoomScrollerLog = false;
+            SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
             game->hasGun = false;
             game->gunSpawned = false;
             game->gunSpawnTimer = 4.0f;
             game->gunAbilityTimer = 0.0f;
             for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
+            game->startTextTimer = 4.0f;
+        } else if (currentLevel == 2) {
+            currentLevel = 3;
+            UnloadTexture(game->map.tileset);
+            Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
+            Player_Init(&game->player);
+            game->player.position.x = 2.0f * TILE_PX;
+            game->player.position.y = 2.0f * TILE_PX;
+            game->player.gridX = 2;
+            game->player.gridY = 2;
+            game->state = STATE_SURVIVAL;
+            game->zombieTimer = 0.0f;
+            game->zombieSpawnTimer = 0.0f;
+            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
             game->startTextTimer = 4.0f;
         } else {
             currentLevel = 0;
@@ -232,10 +282,10 @@ void UpdateGame(GameState* game, float dt) {
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 for (int x = 0; x < MAP_WIDTH; x++) {
                     int tid = game->map.tiles[y][x];
-                    if (tid == 306 || tid == 308 || tid == 355) game->map.tiles[y][x] = 20;
+                    if (tid == 283 || tid == 306 || tid == 308 || tid == 355) game->map.tiles[y][x] = 20;
                 }
             }
-            game->map.tiles[game->mayorRow][game->mayorCol] = 306;
+            game->map.tiles[game->mayorRow][game->mayorCol] = 283;
             Player_Init(&game->player);
             game->state = STATE_EXPLORING;
             game->zombieTimer = 0.0f;
@@ -286,24 +336,52 @@ void UpdateGame(GameState* game, float dt) {
                 }
             }
 
-            Vector2 slashPos = {
-                game->player.position.x + TILE_PX / 2.0f,
-                game->player.position.y + TILE_PX / 2.0f
-            };
+            int pCol = (int)(game->player.position.x / TILE_PX);
+            int pRow = (int)(game->player.position.y / TILE_PX);
+            int dx = 0, dy = 0;
+            if (game->player.direction == DIR_UP) dy = -1;
+            else if (game->player.direction == DIR_DOWN) dy = 1;
+            else if (game->player.direction == DIR_LEFT) dx = -1;
+            else if (game->player.direction == DIR_RIGHT) dx = 1;
+
+            float rx = (pCol + dx) * TILE_PX;
+            float ry = (pRow + dy) * TILE_PX;
+            float rw = TILE_PX;
+            float rh = TILE_PX;
+            if (dx != 0) rw = TILE_PX * 2.0f;
+            if (dy != 0) rh = TILE_PX * 2.0f;
+            if (dx == -1) rx = (pCol - 2) * TILE_PX;
+            if (dy == -1) ry = (pRow - 2) * TILE_PX;
+
+            Rectangle attackRec = { rx, ry, rw, rh };
 
             for (int i = 0; i < MAX_ZOMBIES; i++) {
-                if (IsZombieHit(game, i, slashPos, 64.0f)) {
-                    DamageZombie(game, i, 100.0f);
+                if (game->zombies[i].active) {
+                    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                    float zSize = TILE_PX * props.scale;
+                    float offset = (props.scale - 1.0f) / 2.0f;
+                    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                    if (CheckCollisionRecs(attackRec, zRec)) {
+                        DamageZombie(game, i, 100.0f);
+                    }
                 }
             }
         }
     }
 
-    if (game->gunSpawned && pRow == game->gunRow && pCol == game->gunCol) {
-        game->gunSpawned = false;
-        game->hasGun = true;
-        game->gunAbilityTimer = 4.0f;
-        PlaySound(game->blastSound);
+    if (game->gunSpawned) {
+        float gx = game->gunCol * TILE_PX + TILE_PX / 2.0f;
+        float gy = game->gunRow * TILE_PX + TILE_PX / 2.0f;
+        float px = game->player.position.x + TILE_PX / 2.0f;
+        float py = game->player.position.y + TILE_PX / 2.0f;
+        float dx = px - gx;
+        float dy = py - gy;
+        if (sqrtf(dx*dx + dy*dy) < 32.0f) {
+            game->gunSpawned = false;
+            game->hasGun = true;
+            game->gunAbilityTimer = 4.0f;
+            PlaySound(game->blastSound);
+        }
     }
 
     if (game->hasGun) {
@@ -355,18 +433,24 @@ void UpdateGame(GameState* game, float dt) {
         case STATE_MENU: {
             if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
                 game->menuSelection--;
-                if (game->menuSelection < 0) game->menuSelection = 4;
+                if (game->menuSelection < 0) game->menuSelection = 5;
             }
             if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
                 game->menuSelection++;
-                if (game->menuSelection > 4) game->menuSelection = 0;
+                if (game->menuSelection > 5) game->menuSelection = 0;
             }
-            if (IsKeyPressed(KEY_ENTER)) {
+            if (game->menuSelection == 1) {
+                if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+                    game->difficulty = (game->difficulty + 1) % 3;
+                } else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+                    game->difficulty = (game->difficulty + 2) % 3;
+                }
+            } else if (IsKeyPressed(KEY_ENTER)) {
                 if (game->menuSelection == 0) game->state = STATE_NAME_PROMPT;
-                else if (game->menuSelection == 1) { game->state = STATE_INFO; game->storyPage = 0; }
-                else if (game->menuSelection == 2) game->state = STATE_HISTORY;
-                else if (game->menuSelection == 3) game->state = STATE_TEAM;
-                else if (game->menuSelection == 4) CloseWindow();
+                else if (game->menuSelection == 2) { game->state = STATE_INFO; game->storyPage = 0; }
+                else if (game->menuSelection == 3) game->state = STATE_HISTORY;
+                else if (game->menuSelection == 4) game->state = STATE_TEAM;
+                else if (game->menuSelection == 5) CloseWindow();
             }
             break;
         }
@@ -404,14 +488,7 @@ void UpdateGame(GameState* game, float dt) {
                 StopSound(game->cut1Audio);
                 StopSound(game->cut2Audio);
                 GameState_UnloadCutscenes(game);
-                game->state = STATE_EXPLORING;
-                game->lives = 3;
-                game->checkpointPosition = game->player.position;
-                game->checkpointLevel = currentLevel;
-                game->checkpointState = STATE_EXPLORING;
-                game->checkpointActive = true;
-                game->startTextTimer = 4.0f;
-                PlayMusicStream(game->bgMusic);
+                GameState_TransitionFromCutscene(game);
                 break;
             }
             if (game->cutscenePart == 0 && game->cutsceneTime >= 10.0f) {
@@ -423,14 +500,7 @@ void UpdateGame(GameState* game, float dt) {
             if (game->cutscenePart == 1 && game->cutsceneTime >= 4.0f) {
                 StopSound(game->cut2Audio);
                 GameState_UnloadCutscenes(game);
-                game->state = STATE_EXPLORING;
-                game->lives = 3;
-                game->checkpointPosition = game->player.position;
-                game->checkpointLevel = currentLevel;
-                game->checkpointState = STATE_EXPLORING;
-                game->checkpointActive = true;
-                game->startTextTimer = 4.0f;
-                PlayMusicStream(game->bgMusic);
+                GameState_TransitionFromCutscene(game);
             }
             break;
         }
@@ -476,6 +546,8 @@ void UpdateGame(GameState* game, float dt) {
                 if (currentLevel == 0) {
                     game->map.tiles[game->mayorRow][game->mayorCol] = 236;
                     game->map.tiles[game->mayorRow][game->mayorCol + 1] = 237;
+                    game->player.position.x = 25.0f * TILE_PX;
+                    game->player.position.y = 23.0f * TILE_PX;
                     for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
                     SpawnZombie(game);
                     SpawnZombie(game);
@@ -498,14 +570,44 @@ void UpdateGame(GameState* game, float dt) {
         case STATE_SURVIVAL: {
             Player_Update(&game->player, &game->map, dt);
 
+            if (currentLevel == 3) {
+                int pCol = (int)(game->player.position.x / TILE_PX);
+                int pRow = (int)(game->player.position.y / TILE_PX);
+                
+                if (pRow == 2 && pCol == 20) {
+                    if (game->map.tiles[3][21] == 59) {
+                        game->map.tiles[3][21] = 17;
+                        game->map.tiles[3][22] = 17;
+                        PlaySound(game->blastSound);
+                    }
+                }
+                
+                if ((pRow == 2 && pCol == 23) || (pRow == 20 && pCol == 8)) {
+                    if (game->map.tiles[21][3] == 59) {
+                        game->map.tiles[21][3] = 17;
+                        game->map.tiles[21][4] = 17;
+                        game->map.tiles[22][3] = 17;
+                        game->map.tiles[22][4] = 17;
+                        PlaySound(game->blastSound);
+                    }
+                }
+            }
+
             bool canSpawn = true;
-            if (currentLevel == 1 && game->bossDefeated) canSpawn = false;
-            if (currentLevel == 2 && game->brainrotGodDefeated) canSpawn = false;
+            if (currentLevel == 1 && game->bosses[BOSS_RAT_KING].defeated) canSpawn = false;
+            if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
+            if (currentLevel == 3) canSpawn = false;
 
             game->zombieSpawnTimer += dt;
-            if (game->zombieSpawnTimer >= 2.0f) {
+            float spawnCooldown = (currentLevel == 0) ? 2.5f : (currentLevel == 1) ? 1.8f : 1.2f;
+            if (game->zombieSpawnTimer >= spawnCooldown) {
                 game->zombieSpawnTimer = 0.0f;
-                if (canSpawn) SpawnZombie(game);
+                if (canSpawn) {
+                    int spawnCount = 1 + currentLevel;
+                    for (int s = 0; s < spawnCount; s++) {
+                        SpawnZombie(game);
+                    }
+                }
             }
 
             UpdateZombies(game, dt);
@@ -517,32 +619,15 @@ void UpdateGame(GameState* game, float dt) {
 
                     if (currentLevel == 0) {
                         GameHistory_SaveEntry(game->playerName, 1, false);
-                        currentLevel = 1;
-                        UnloadTexture(game->map.tileset);
-                        Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
                         
-                        Player_Init(&game->player);
-                        game->state = STATE_SURVIVAL;
-                        game->zombieTimer = 0.0f;
-                        game->zombieSpawnTimer = 0.0f;
-                        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-                        SpawnZombie(game);
-                        SpawnZombie(game);
-                        SpawnRatKing(game, 10, 10);
-                        game->bossSpawned = true;
-                        game->bossDefeated = false;
-                        game->showBossLog = false;
-                        game->hasGun = false;
-                        game->gunSpawned = false;
-                        game->gunSpawnTimer = 4.0f;
-                        game->gunAbilityTimer = 0.0f;
-                        for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-                        game->startTextTimer = 4.0f;
-
-                        game->checkpointPosition = game->player.position;
-                        game->checkpointLevel = currentLevel;
-                        game->checkpointState = STATE_SURVIVAL;
-                        game->checkpointActive = true;
+                        GameState_LoadCutscenes(game);
+                        game->state = STATE_INTRO;
+                        game->cutscenePart = 1;
+                        game->cutsceneTime = 0.0f;
+                        PlaySound(game->cut2Audio);
+                        
+                        game->cutsceneTargetLevel = 1;
+                        game->cutsceneTargetState = STATE_SURVIVAL;
                     } else if (currentLevel == 1) {
                         GameHistory_SaveEntry(game->playerName, 2, false);
                         currentLevel = 2;
@@ -555,10 +640,7 @@ void UpdateGame(GameState* game, float dt) {
                         game->zombieSpawnTimer = 0.0f;
                         for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
                         
-                        SpawnDoomScroller(game);
-                        game->doomScrollerSpawned = true;
-                        game->doomScrollerDefeated = false;
-                        game->showDoomScrollerLog = false;
+                        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
                         
                         game->hasGun = false;
                         game->gunSpawned = false;
@@ -571,6 +653,9 @@ void UpdateGame(GameState* game, float dt) {
                         game->checkpointLevel = currentLevel;
                         game->checkpointState = STATE_SURVIVAL;
                         game->checkpointActive = true;
+                    } else if (currentLevel == 3) {
+                        GameHistory_SaveEntry(game->playerName, 4, true);
+                        game->state = STATE_WIN;
                     }
                 }
             }
@@ -591,80 +676,74 @@ void UpdateGame(GameState* game, float dt) {
                 
                 Vector2 blastPos = { pCol * TILE_PX + TILE_PX/2.0f, pRow * TILE_PX + TILE_PX/2.0f };
                 for (int i = 0; i < MAX_ZOMBIES; i++) {
-                    if (IsZombieHit(game, i, blastPos, 160.0f)) DamageZombie(game, i, 50.0f);
+                    if (game->zombies[i].active) {
+                        EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                        float zSize = TILE_PX * props.scale;
+                        float offset = (props.scale - 1.0f) / 2.0f;
+                        Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                        if (CheckCollisionCircleRec(blastPos, 80.0f, zRec)) {
+                            DamageZombie(game, i, 50.0f);
+                        }
+                    }
                 }
             }
 
-            if (currentLevel == 2 && game->brainrotGodSpawned && !game->brainrotGodDefeated) {
+            if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
                 Vector2 pPos = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
-                
-                if (!game->curiosityActivated) {
-                    float dx = pPos.x - game->curiosityPos.x;
-                    float dy = pPos.y - game->curiosityPos.y;
-                    if (sqrtf(dx*dx + dy*dy) < 24.0f) {
-                        game->curiosityActivated = true;
-                        PlaySound(game->blastSound);
-                        for (int z = 0; z < MAX_ZOMBIES; z++) {
-                            if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
+                for (int i = 0; i < 3; i++) {
+                    if (!game->fragments[i].activated) {
+                        float dx = pPos.x - game->fragments[i].position.x;
+                        float dy = pPos.y - game->fragments[i].position.y;
+                        if (sqrtf(dx*dx + dy*dy) < 24.0f) {
+                            game->fragments[i].activated = true;
+                            PlaySound(game->blastSound);
+                            for (int z = 0; z < MAX_ZOMBIES; z++) {
+                                if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
+                            }
                         }
                     }
                 }
-                if (!game->knowledgeActivated) {
-                    float dx = pPos.x - game->knowledgePos.x;
-                    float dy = pPos.y - game->knowledgePos.y;
-                    if (sqrtf(dx*dx + dy*dy) < 24.0f) {
-                        game->knowledgeActivated = true;
-                        PlaySound(game->blastSound);
-                        for (int z = 0; z < MAX_ZOMBIES; z++) {
-                            if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
-                        }
-                    }
-                }
-                if (!game->truthActivated) {
-                    float dx = pPos.x - game->truthPos.x;
-                    float dy = pPos.y - game->truthPos.y;
-                    if (sqrtf(dx*dx + dy*dy) < 24.0f) {
-                        game->truthActivated = true;
-                        PlaySound(game->blastSound);
-                        for (int z = 0; z < MAX_ZOMBIES; z++) {
-                            if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
+            }
+            Rectangle pRec = { game->player.position.x + 2.0f, game->player.position.y + 2.0f, 28.0f, 28.0f };
+            for (int i = 0; i < MAX_ZOMBIES; i++) {
+                if (game->zombies[i].active) {
+                    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                    float zSize = TILE_PX * props.scale;
+                    float offset = (props.scale - 1.0f) / 2.0f;
+                    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                    if (CheckCollisionRecs(pRec, zRec)) {
+                        game->player.health -= 30.0f * dt;
+                        if (game->hitSoundTimer <= 0.0f) {
+                            PlaySound(game->hitSound);
+                            game->hitSoundTimer = 0.5f;
                         }
                     }
                 }
             }
 
-            for (int i = 0; i < MAX_ZOMBIES; i++) {
-                if (game->zombies[i].active && game->zombies[i].row == pRow && game->zombies[i].col == pCol) {
-                    game->player.health -= 30.0f * dt;
-                    if (game->hitSoundTimer <= 0.0f) {
-                        PlaySound(game->hitSound);
-                        game->hitSoundTimer = 0.5f;
+            if (game->player.health <= 0.0f) {
+                game->player.health = 0.0f;
+                if (game->checkpointActive && game->lives > 1) {
+                    game->lives--;
+                    game->player.health = 100.0f;
+                    
+                    if (currentLevel != game->checkpointLevel) {
+                        currentLevel = game->checkpointLevel;
+                        UnloadTexture(game->map.tileset);
+                        if (currentLevel == 0) Tilemap_Load(&game->map, "map1.csv", "tilemap_packed.png");
+                        else if (currentLevel == 1) Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
+                        else if (currentLevel == 2) Tilemap_Load(&game->map, "map3.csv", "tilemap_packed3.png");
+                        else Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
                     }
-                    if (game->player.health <= 0.0f) {
-                        game->player.health = 0.0f;
-                        
-                        if (game->checkpointActive && game->lives > 1) {
-                            game->lives--;
-                            game->player.health = 100.0f;
-                            
-                            if (currentLevel != game->checkpointLevel) {
-                                currentLevel = game->checkpointLevel;
-                                UnloadTexture(game->map.tileset);
-                                if (currentLevel == 0) Tilemap_Load(&game->map, "map1.csv", "tilemap_packed.png");
-                                else if (currentLevel == 1) Tilemap_Load(&game->map, "map2.csv", "tilemap_packed2.png");
-                                else Tilemap_Load(&game->map, "map3.csv", "tilemap_packed3.png");
-                            }
-                            
-                            game->player.position = game->checkpointPosition;
-                            game->player.gridX = (int)(game->player.position.x / TILE_PX);
-                            game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                            game->state = game->checkpointState;
-                            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-                        } else {
-                            GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
-                            game->state = STATE_GAMEOVER;
-                        }
-                    }
+                    
+                    game->player.position = game->checkpointPosition;
+                    game->player.gridX = (int)(game->player.position.x / TILE_PX);
+                    game->player.gridY = (int)(game->player.position.y / TILE_PX);
+                    game->state = game->checkpointState;
+                    for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+                } else {
+                    GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
+                    game->state = STATE_GAMEOVER;
                 }
             }
             break;
@@ -683,7 +762,10 @@ void UpdateGame(GameState* game, float dt) {
         }
 
         case STATE_WIN: {
-            if (IsKeyPressed(KEY_ENTER)) game->state = STATE_MENU;
+            if (IsKeyPressed(KEY_ENTER)) {
+                GameState_Init(game);
+                game->state = STATE_MENU;
+            }
             break;
         }
     }
@@ -747,56 +829,32 @@ void DrawGame(const GameState* game) {
                 float zx = game->zombies[i].position.x;
                 float zy = game->zombies[i].position.y;
                 
-                if (currentLevel == 0) {
-                    if (game->zombies[i].type == ENEMY_RAT_KING) {
-                        DrawTexturePro(game->spritesTileset, 
-                                       (Rectangle){ (float)(23 % game->spritesTilesPerRow) * TILE_SIZE, (float)(23 / game->spritesTilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
-                                       (Rectangle){ zx - TILE_PX*0.75f, zy - TILE_PX*0.75f, TILE_PX * 2.5f, TILE_PX * 2.5f },
-                                       (Vector2){ 0, 0 }, 0.0f, PURPLE);
-                    } else {
-                        DrawTile(game->map.tileset, game->map.tilesPerRow, 331, zx, zy);
-                        DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
-                    }
-                } else if (currentLevel == 1) {
-                    if (game->zombies[i].type == ENEMY_DOOM_SCROLLER) {
-                        DrawTexturePro(game->spritesTileset,
-                                       (Rectangle){ (float)(306 % game->spritesTilesPerRow) * TILE_SIZE, (float)(306 / game->spritesTilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
-                                       (Rectangle){ zx - TILE_PX*1.0f, zy - TILE_PX*1.0f, TILE_PX * 3.0f, TILE_PX * 3.0f },
-                                       (Vector2){ 0, 0 }, 0.0f, RED);
-                    } else {
-                        int zTileID = (game->zombies[i].type == ENEMY_SPIDER) ? 23 : 20;
-                        DrawTile(game->spritesTileset, game->spritesTilesPerRow, zTileID, zx, zy);
-                    }
-                } else {
-                    if (game->zombies[i].type == ENEMY_ALGORITHM) {
-                        DrawTexturePro(game->spritesTileset,
-                                       (Rectangle){ (float)(308 % game->spritesTilesPerRow) * TILE_SIZE, (float)(308 / game->spritesTilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
-                                       (Rectangle){ zx - TILE_PX*0.75f, zy - TILE_PX*0.75f, TILE_PX * 2.5f, TILE_PX * 2.5f },
-                                       (Vector2){ 0, 0 }, 0.0f, VIOLET);
-                    } else if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-                        float pulse = sinf(GetTime() * 4.0f) * 4.0f;
-                        DrawTexturePro(game->spritesTileset,
-                                       (Rectangle){ (float)(27 % game->spritesTilesPerRow) * TILE_SIZE, (float)(27 / game->spritesTilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
-                                       (Rectangle){ zx - TILE_PX*1.5f, zy - TILE_PX*1.5f, TILE_PX * 4.0f + pulse, TILE_PX * 4.0f + pulse },
-                                       (Vector2){ 0, 0 }, 0.0f, WHITE);
-                    } else {
-                        DrawTile(game->map.tileset, game->map.tilesPerRow, 331, zx, zy);
-                        DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
-                    }
+                EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                float pulse = 0.0f;
+                if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
+                    pulse = sinf(GetTime() * 4.0f) * 4.0f;
                 }
 
-                float barWidth = (float)TILE_PX;
-                float barHeight = 4.0f;
-                if (game->zombies[i].type == ENEMY_RAT_KING || game->zombies[i].type == ENEMY_ALGORITHM) {
-                    barWidth = TILE_PX * 2.5f;
-                    barHeight = 6.0f;
-                } else if (game->zombies[i].type == ENEMY_DOOM_SCROLLER) {
-                    barWidth = TILE_PX * 3.0f;
-                    barHeight = 6.0f;
-                } else if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-                    barWidth = TILE_PX * 4.0f;
-                    barHeight = 8.0f;
+                float offset = (props.scale - 1.0f) / 2.0f;
+                Texture2D tileset = game->spritesTileset;
+                int tilesPerRow = game->spritesTilesPerRow;
+
+                if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+                    tileset = game->map.tileset;
+                    tilesPerRow = game->map.tilesPerRow;
                 }
+
+                DrawTexturePro(tileset,
+                               (Rectangle){ (float)(props.baseTileId % tilesPerRow) * TILE_SIZE, (float)(props.baseTileId / tilesPerRow) * TILE_SIZE, TILE_SIZE, TILE_SIZE },
+                               (Rectangle){ zx - TILE_PX * offset, zy - TILE_PX * offset, TILE_PX * props.scale + pulse, TILE_PX * props.scale + pulse },
+                               (Vector2){ 0, 0 }, 0.0f, props.color);
+
+                if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+                    DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
+                }
+
+                float barWidth = TILE_PX * props.scale;
+                float barHeight = (props.scale > 1.0f) ? ((props.scale >= 4.0f) ? 8.0f : 6.0f) : 4.0f;
                 float zx_offset = zx - (barWidth - TILE_PX)/2.0f;
                 float z_py = zy - 10.0f;
                 DrawRectangle(zx_offset, z_py, barWidth, barHeight, ColorAlpha(BLACK, 0.6f));
@@ -810,24 +868,16 @@ void DrawGame(const GameState* game) {
             }
         }
 
-        if (currentLevel == 2 && game->brainrotGodSpawned && !game->brainrotGodDefeated) {
-            if (!game->curiosityActivated) {
-                float pulse = sinf(GetTime() * 5.0f);
-                DrawCircleLines(game->curiosityPos.x + TILE_PX/2.0f, game->curiosityPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, GREEN);
-                DrawCircle(game->curiosityPos.x + TILE_PX/2.0f, game->curiosityPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(GREEN, 0.5f));
-                DrawText("CURIOSITY", game->curiosityPos.x - 12, game->curiosityPos.y - 12, 10, GREEN);
-            }
-            if (!game->knowledgeActivated) {
-                float pulse = sinf(GetTime() * 5.0f);
-                DrawCircleLines(game->knowledgePos.x + TILE_PX/2.0f, game->knowledgePos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, YELLOW);
-                DrawCircle(game->knowledgePos.x + TILE_PX/2.0f, game->knowledgePos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(YELLOW, 0.5f));
-                DrawText("KNOWLEDGE", game->knowledgePos.x - 15, game->knowledgePos.y - 12, 10, YELLOW);
-            }
-            if (!game->truthActivated) {
-                float pulse = sinf(GetTime() * 5.0f);
-                DrawCircleLines(game->truthPos.x + TILE_PX/2.0f, game->truthPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, RAYWHITE);
-                DrawCircle(game->truthPos.x + TILE_PX/2.0f, game->truthPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(RAYWHITE, 0.5f));
-                DrawText("TRUTH", game->truthPos.x - 2, game->truthPos.y - 12, 10, RAYWHITE);
+        if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
+            Color colors[3] = { GREEN, YELLOW, RAYWHITE };
+            for (int i = 0; i < 3; i++) {
+                if (!game->fragments[i].activated) {
+                    float pulse = sinf(GetTime() * 5.0f);
+                    Vector2 fPos = game->fragments[i].position;
+                    DrawCircleLines(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, colors[i]);
+                    DrawCircle(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(colors[i], 0.5f));
+                    DrawText(game->fragments[i].name, fPos.x - MeasureText(game->fragments[i].name, 10)/2.0f + TILE_PX/2.0f, fPos.y - 12, 10, colors[i]);
+                }
             }
         }
 
@@ -889,7 +939,11 @@ void DrawGame(const GameState* game) {
         if (game->gunSpawned) {
             float gx = game->gunCol * TILE_PX;
             float gy = game->gunRow * TILE_PX;
-            DrawTile(game->spritesTileset, game->spritesTilesPerRow, 133, gx, gy);
+            float xco = (float)((133 % game->spritesTilesPerRow) * TILE_SIZE);
+            float yco = (float)((133 / game->spritesTilesPerRow) * TILE_SIZE);
+            Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
+            Rectangle dest = { gx, gy, (float)TILE_PX, (float)TILE_PX };
+            DrawTexturePro(game->spritesTileset, src, dest, (Vector2){0, 0}, 0.0f, ColorAlpha(WHITE, 0.65f));
             float pulse = sinf(GetTime() * 6.0f);
             DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f, SKYBLUE);
             DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, BLUE);
@@ -908,6 +962,7 @@ void DrawGame(const GameState* game) {
     }
 
     if (game->state == STATE_MENU) DrawMenuScreen(game);
+    else if (game->state == STATE_NAME_PROMPT) DrawNamePromptScreen(game);
     else if (game->state == STATE_INFO) DrawInfoScreen(game);
     else if (game->state == STATE_HISTORY) DrawHistoryScreen(game);
     else if (game->state == STATE_TEAM) DrawTeamScreen(game);

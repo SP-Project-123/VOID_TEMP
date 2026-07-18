@@ -8,10 +8,10 @@ extern int currentLevel;
 
 // --- Tile Type Classification ---
 int GetTileType(int tileID) {
-    // 306/308 is designated as the Mayor tile
-    if (tileID == 306 || tileID == 308) return TILE_MAYOR;
-    // 236, 237, and 283 are designated as the Cave exit gate tiles
-    if (tileID == 236 || tileID == 237 || tileID == 283) return TILE_CAVE;
+    // 283 is designated as the Mayor tile
+    if (tileID == 283) return TILE_MAYOR;
+    // 236, 237, 306, 308, and 158 are designated as the Cave exit gate tiles
+    if (tileID == 236 || tileID == 237 || tileID == 306 || tileID == 308 || tileID == 158) return TILE_CAVE;
     
     // Designated list of car tile IDs from map1.csv
     static const int carTiles[] = { 263, 287, 329, 330, 353,324,323,275,276, 354,313,181,101,288,183,347,348,349,350 };
@@ -19,13 +19,40 @@ int GetTileType(int tileID) {
         if (carTiles[i] == tileID) return TILE_CAR;
     }
 
-    // Walkable / Ground tiles list
-    static const int walkable[] = {
-        19, 20,21, 43, 44, 45, 67, 68, 69,22,23,47,46,70,71,101,125,
-        121, 126, 265, 288,289, 290,291,292, 293, 337,336,338,171,170,312,313,314, 344, 209,210,83,193,185,198,210,185,135
+    // Walkable lists separated by currentLevel
+    static const int walkableL1[] = {
+        19, 20, 21, 22, 23, 43, 44, 45, 46, 47, 67, 68, 69, 70, 71, 83, 101, 121, 125, 126, 135, 170, 171, 185, 193, 198, 209, 210, 265, 288, 289, 290, 291, 292, 293, 312, 313, 314, 336, 337, 338, 344
     };
-    for (int i = 0; i < (int)(sizeof(walkable) / sizeof(walkable[0])); i++) {
-        if (walkable[i] == tileID) return TILE_GROUND;
+    static const int walkableL2[] = {
+        -1, 29, 30, 36, 37, 38, 64, 108, 109, 110, 113, 114, 118, 120, 123, 131, 132, 134, 141, 142, 143, 150, 151, 155, 156, 159, 172, 173, 174, 190, 191, 192, 193
+    };
+    static const int walkableL3[] = {
+        0, 8, 9, 10, 11, 38, 39, 62, 63, 104, 105, 117, 118, 119, 128, 129, 141, 142, 143, 152, 153, 165, 166, 167, 176, 177, 346, 347
+    };
+    static const int walkableL4[] = {
+        17, 64, 65, 158, 159
+    };
+
+    const int* list = NULL;
+    int size = 0;
+    if (currentLevel == 0) {
+        list = walkableL1;
+        size = sizeof(walkableL1) / sizeof(walkableL1[0]);
+    } else if (currentLevel == 1) {
+        list = walkableL2;
+        size = sizeof(walkableL2) / sizeof(walkableL2[0]);
+    } else if (currentLevel == 2) {
+        list = walkableL3;
+        size = sizeof(walkableL3) / sizeof(walkableL3[0]);
+    } else if (currentLevel == 3) {
+        list = walkableL4;
+        size = sizeof(walkableL4) / sizeof(walkableL4[0]);
+    }
+
+    if (list) {
+        for (int i = 0; i < size; i++) {
+            if (list[i] == tileID) return TILE_GROUND;
+        }
     }
 
     // Default to Wall for non-walkable tiles
@@ -50,7 +77,7 @@ void Tilemap_Load(Tilemap* self, const char* csvPath, const char* texturePath) {
     // Inject Level 2 specific configurations dynamically into Map 2
     if (currentLevel == 1) {
         // Place a cave in Map 2 at Row 15, Col 29 to allow Level 2 escape
-        self->tiles[15][29] = 283;
+        self->tiles[15][29] = 306;
         // Inject a few obstacles/walls in Level 2 for zombie pathing variety
         for (int i = 0; i < 6; i++) {
             self->tiles[8][10 + i] = 28;
@@ -66,9 +93,6 @@ void Tilemap_Draw(const Tilemap* self) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int tileID = self->tiles[y][x];
-            if (tileID == 306 || tileID == 308) {
-                tileID = ((int)(GetTime() * 2.0f) % 2 == 0) ? 306 : 308;
-            }
             DrawTile(self->tileset, self->tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
         }
     }

@@ -69,33 +69,38 @@ void DrawMenuScreen(const GameState* game) {
     DrawText(subtitle, (GetScreenWidth() - subWidth) / 2, GetScreenHeight() / 4 + 70, 18, GRAY);
 
     Color playColor = (game->menuSelection == 0) ? RED : DARKGRAY;
-    Color infoColor = (game->menuSelection == 1) ? RED : DARKGRAY;
-    Color historyColor = (game->menuSelection == 2) ? RED : DARKGRAY;
-    Color teamColor = (game->menuSelection == 3) ? RED : DARKGRAY;
-    Color quitColor = (game->menuSelection == 4) ? RED : DARKGRAY;
+    Color diffColor = (game->menuSelection == 1) ? RED : DARKGRAY;
+    Color infoColor = (game->menuSelection == 2) ? RED : DARKGRAY;
+    Color historyColor = (game->menuSelection == 3) ? RED : DARKGRAY;
+    Color teamColor = (game->menuSelection == 4) ? RED : DARKGRAY;
+    Color quitColor = (game->menuSelection == 5) ? RED : DARKGRAY;
     
     const char* playText = "PLAY GAME";
+    char diffText[48];
+    sprintf(diffText, "DIFFICULTY: %s", (game->difficulty == 0) ? "EASY" : (game->difficulty == 1) ? "NORMAL" : "HARD");
     const char* infoText = "STORY & INFO";
     const char* historyText = "GAME HISTORY";
     const char* teamText = "DEVELOPMENT TEAM";
     const char* quitText = "QUIT";
     
     int playWidth = MeasureText(playText, 24);
+    int diffWidth = MeasureText(diffText, 24);
     int infoWidth = MeasureText(infoText, 24);
     int historyWidth = MeasureText(historyText, 24);
     int teamWidth = MeasureText(teamText, 24);
     int quitWidth = MeasureText(quitText, 24);
     
-    int startY = GetScreenHeight() / 2 - 30;
-    int selectY = startY + (game->menuSelection * 40);
-    DrawRectangle((GetScreenWidth() - 320) / 2, selectY - 10, 320, 40, ColorAlpha(DARKGRAY, 0.2f));
-    DrawRectangleLines((GetScreenWidth() - 320) / 2, selectY - 10, 320, 40, RED);
+    int startY = GetScreenHeight() / 2 - 40;
+    int selectY = startY + (game->menuSelection * 35);
+    DrawRectangle((GetScreenWidth() - 360) / 2, selectY - 8, 360, 32, ColorAlpha(DARKGRAY, 0.2f));
+    DrawRectangleLines((GetScreenWidth() - 360) / 2, selectY - 8, 360, 32, RED);
 
     DrawText(playText, (GetScreenWidth() - playWidth) / 2, startY, 20, playColor);
-    DrawText(infoText, (GetScreenWidth() - infoWidth) / 2, startY + 40, 20, infoColor);
-    DrawText(historyText, (GetScreenWidth() - historyWidth) / 2, startY + 80, 20, historyColor);
-    DrawText(teamText, (GetScreenWidth() - teamWidth) / 2, startY + 120, 20, teamColor);
-    DrawText(quitText, (GetScreenWidth() - quitWidth) / 2, startY + 160, 20, quitColor);
+    DrawText(diffText, (GetScreenWidth() - diffWidth) / 2, startY + 35, 20, diffColor);
+    DrawText(infoText, (GetScreenWidth() - infoWidth) / 2, startY + 70, 20, infoColor);
+    DrawText(historyText, (GetScreenWidth() - historyWidth) / 2, startY + 105, 20, historyColor);
+    DrawText(teamText, (GetScreenWidth() - teamWidth) / 2, startY + 140, 20, teamColor);
+    DrawText(quitText, (GetScreenWidth() - quitWidth) / 2, startY + 175, 20, quitColor);
 
     int panelW = 440;
     int panelH = 110;
@@ -109,6 +114,49 @@ void DrawMenuScreen(const GameState* game) {
     DrawText("[WASD / Arrow Keys] Move Character", panelX + 20, panelY + 38, 12, LIGHTGRAY);
     DrawText("[SPACE] Sword Attack (Requires Weapon)", panelX + 20, panelY + 58, 12, LIGHTGRAY);
     DrawText("[F] Superpower Area Blast (8s Cooldown)", panelX + 20, panelY + 78, 12, LIGHTGRAY);
+}
+
+void DrawNamePromptScreen(const GameState* game) {
+    ClearBackground((Color){ 15, 15, 20, 255 });
+
+    int boxWidth = 500;
+    int boxHeight = 250;
+    int boxX = (GetScreenWidth() - boxWidth) / 2;
+    int boxY = (GetScreenHeight() - boxHeight) / 2;
+
+    DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.85f));
+    DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, RED);
+
+    const char* promptHeader = "ENTER PLAYER NAME";
+    int headerWidth = MeasureText(promptHeader, 24);
+    DrawText(promptHeader, (GetScreenWidth() - headerWidth) / 2, boxY + 30, 24, RED);
+    DrawText("--------------------------------", boxX + 50, boxY + 65, 16, GRAY);
+
+    int inputW = 360;
+    int inputH = 50;
+    int inputX = (GetScreenWidth() - inputW) / 2;
+    int inputY = boxY + 100;
+    DrawRectangle(inputX, inputY, inputW, inputH, ColorAlpha(DARKGRAY, 0.3f));
+    DrawRectangleLines(inputX, inputY, inputW, inputH, GRAY);
+
+    char nameDisplay[32];
+    if (game->playerNameLength > 0) {
+        strcpy(nameDisplay, game->playerName);
+    } else {
+        strcpy(nameDisplay, "");
+    }
+    
+    bool showCursor = (int)(GetTime() * 2.0f) % 2 == 0;
+    if (showCursor && game->playerNameLength < 15) {
+        strcat(nameDisplay, "_");
+    }
+
+    int textW = MeasureText(nameDisplay, 22);
+    DrawText(nameDisplay, inputX + (inputW - textW) / 2, inputY + 15, 22, GREEN);
+
+    const char* footerText = "Press [ENTER] to Begin | [ESC] to Cancel";
+    int footerW = MeasureText(footerText, 14);
+    DrawText(footerText, (GetScreenWidth() - footerW) / 2, boxY + 185, 14, YELLOW);
 }
 
 void DrawInfoScreen(const GameState* game) {
@@ -356,14 +404,17 @@ void DrawHUD(const GameState* game) {
         for (int i = 0; i < MAX_ZOMBIES; i++) {
             if (game->zombies[i].active) activeCount++;
         }
-        const char* obj = (currentLevel == 0) ? "OBJ: Defeat Ohio Rat King" : (currentLevel == 1) ? "OBJ: Defeat Doom Scroller" : "OBJ: Defeat Brainrot God";
+        const char* obj = (currentLevel == 0) ? "OBJ: Defeat Ohio Rat King" : 
+                          (currentLevel == 1) ? "OBJ: Defeat Doom Scroller" : 
+                          (currentLevel == 2) ? "OBJ: Defeat Brainrot God" : 
+                                                "OBJ: Escape the Collapsing Center!";
         DrawText(obj, 20, 95, 14, YELLOW);
         DrawText(TextFormat("(Enemies: %d)", activeCount), 220, 95, 14, ORANGE);
     }
 }
 
 void DrawStoryOverlays(const GameState* game) {
-    if (game->showBossLog) {
+    if (game->bosses[BOSS_RAT_KING].showLog) {
         int boxWidth = 600;
         int boxHeight = 220;
         int boxX = (GetScreenWidth() - boxWidth) / 2;
@@ -381,7 +432,7 @@ void DrawStoryOverlays(const GameState* game) {
         DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
     }
     
-    if (game->showDoomScrollerLog) {
+    if (game->bosses[BOSS_DOOM_SCROLLER].showLog) {
         int boxWidth = 600;
         int boxHeight = 220;
         int boxX = (GetScreenWidth() - boxWidth) / 2;
@@ -396,6 +447,23 @@ void DrawStoryOverlays(const GameState* game) {
         DrawText("\"Entertainment receives more attention than knowledge.\"", boxX + 25, boxY + 110, 16, YELLOW);
         DrawText("The infected are ordinary people whose memories", boxX + 25, boxY + 140, 16, LIGHTGRAY);
         DrawText("have been overwritten.", boxX + 25, boxY + 160, 16, LIGHTGRAY);
+        DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
+    }
+    
+    if (game->bosses[BOSS_ALGORITHM].showLog) {
+        int boxWidth = 600;
+        int boxHeight = 220;
+        int boxX = (GetScreenWidth() - boxWidth) / 2;
+        int boxY = (GetScreenHeight() - boxHeight) / 2;
+
+        DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
+        DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
+        
+        DrawText("REWARD: MEMORY FRAGMENT III", boxX + 25, boxY + 20, 20, GREEN);
+        DrawText("The Algorithm of distraction has been severed.", boxX + 25, boxY + 55, 16, WHITE);
+        DrawText("LOG 03: \"Brainrot is not a biological virus.\"", boxX + 25, boxY + 85, 16, YELLOW);
+        DrawText("\"It is an attention-optimization routine gone rogue.\"", boxX + 25, boxY + 115, 16, LIGHTGRAY);
+        DrawText("\"Truth and memories are the only key to terminate it.\"", boxX + 25, boxY + 145, 16, LIGHTGRAY);
         DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
     }
 }

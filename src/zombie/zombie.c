@@ -7,49 +7,7 @@ extern int currentLevel;
 
 // --- Zombie Spawning & Tracking Mechanics ---
 
-void SpawnZombie(GameState* game) {
-    // Find an inactive slot
-    int slot = -1;
-    for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) {
-            slot = i;
-            break;
-        }
-    }
-    if (slot == -1) return; // Fixed enemy array is full
-
-    int playerCol = (int)(game->player.position.x / TILE_PX);
-    int playerRow = (int)(game->player.position.y / TILE_PX);
-
-    // Pick a random row/col and verify it is a TILE_GROUND at a Manhattan distance >= 6
-    for (int attempt = 0; attempt < 100; attempt++) {
-        int r = GetRandomValue(0, MAP_HEIGHT - 1);
-        int c = GetRandomValue(0, MAP_WIDTH - 1);
-
-        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-            int dist = abs(c - playerCol) + abs(r - playerRow);
-            if (dist >= 6) {
-                game->zombies[slot].row = r;
-                game->zombies[slot].col = c;
-                game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-                game->zombies[slot].active = true;
-                game->zombies[slot].health = 30.0f;
-                game->zombies[slot].maxHealth = 30.0f;
-                game->zombies[slot].shootTimer = (float)GetRandomValue(0, 100) / 100.0f;
-                
-                // Map 2: assign Snake (tile 20) or Fireshooter Spider (tile 23)
-                if (currentLevel == 1) {
-                    game->zombies[slot].type = (GetRandomValue(0, 1) == 0) ? ENEMY_SNAKE : ENEMY_SPIDER;
-                } else {
-                    game->zombies[slot].type = ENEMY_SNAKE;
-                }
-                break;
-            }
-        }
-    }
-}
-
-void SpawnRatKing(GameState* game, int r, int c) {
+void SpawnEnemy(GameState* game, EnemyType type, int r, int c) {
     int slot = -1;
     for (int i = 0; i < MAX_ZOMBIES; i++) {
         if (!game->zombies[i].active) {
@@ -59,14 +17,73 @@ void SpawnRatKing(GameState* game, int r, int c) {
     }
     if (slot == -1) return;
 
+    if (r == -1 || c == -1) {
+        int playerCol = (int)(game->player.position.x / TILE_PX);
+        int playerRow = (int)(game->player.position.y / TILE_PX);
+        for (int attempt = 0; attempt < 100; attempt++) {
+            int tr = GetRandomValue(2, MAP_HEIGHT - 3);
+            int tc = GetRandomValue(2, MAP_WIDTH - 3);
+            if (GetTileType(game->map.tiles[tr][tc]) == TILE_GROUND) {
+                int dist = abs(tc - playerCol) + abs(tr - playerRow);
+                if (type == ENEMY_SNAKE || type == ENEMY_SPIDER) {
+                    if (dist >= 6) {
+                        r = tr; c = tc;
+                        break;
+                    }
+                } else {
+                    if (dist >= 3) {
+                        r = tr; c = tc;
+                        break;
+                    }
+                }
+            }
+        }
+        if (r == -1 || c == -1) {
+            r = 10; c = 10;
+        }
+    }
+
+    EnemyProperties props = GetEnemyProperties(type, currentLevel, game->difficulty);
     game->zombies[slot].row = r;
     game->zombies[slot].col = c;
     game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
     game->zombies[slot].active = true;
-    game->zombies[slot].health = 300.0f;
-    game->zombies[slot].maxHealth = 300.0f;
-    game->zombies[slot].type = ENEMY_RAT_KING;
-    game->zombies[slot].shootTimer = 0.0f;
+    game->zombies[slot].health = props.maxHealth;
+    game->zombies[slot].maxHealth = props.maxHealth;
+    game->zombies[slot].type = type;
+    
+    if (type == ENEMY_SNAKE || type == ENEMY_SPIDER) {
+        game->zombies[slot].shootTimer = (float)GetRandomValue(0, 100) / 100.0f;
+    } else {
+        game->zombies[slot].shootTimer = 0.0f;
+        BossId bid = GetBossId(type);
+        if (bid != (BossId)-1) {
+            game->bosses[bid].spawned = true;
+            game->bosses[bid].defeated = false;
+            game->bosses[bid].showLog = false;
+        }
+    }
+
+    if (type == ENEMY_GHOST) {
+        if (GetRandomValue(0, 1) == 0) {
+            game->zombies[slot].ghostVel.x = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
+            game->zombies[slot].ghostVel.y = 0.0f;
+        } else {
+            game->zombies[slot].ghostVel.y = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
+            game->zombies[slot].ghostVel.x = 0.0f;
+        }
+    } else {
+        game->zombies[slot].ghostVel = (Vector2){ 0, 0 };
+    }
+}
+
+void SpawnZombie(GameState* game) {
+    EnemyType type = ENEMY_SNAKE;
+    if (currentLevel == 1 || currentLevel == 2) {
+        int roll = GetRandomValue(0, 2);
+        type = (roll == 0) ? ENEMY_SNAKE : (roll == 1) ? ENEMY_SPIDER : ENEMY_GHOST;
+    }
+    SpawnEnemy(game, type, -1, -1);
 }
 
 static void ShootSpiderProjectile(GameState* game, Vector2 startPos, Vector2 targetPos, bool isBig) {
@@ -167,6 +184,35 @@ void UpdateZombies(GameState* game, float dt) {
     for (int i = 0; i < MAX_ZOMBIES; i++) {
         if (!game->zombies[i].active) continue;
 
+        if (game->zombies[i].type == ENEMY_GHOST) {
+            game->zombies[i].position.x += game->zombies[i].ghostVel.x * dt;
+            game->zombies[i].position.y += game->zombies[i].ghostVel.y * dt;
+
+            // Bounce check at screen boundaries
+            if (game->zombies[i].position.x < 0) {
+                game->zombies[i].position.x = 0;
+                game->zombies[i].ghostVel.x = -game->zombies[i].ghostVel.x;
+            }
+            else if (game->zombies[i].position.x > (MAP_WIDTH - 1) * TILE_PX) {
+                game->zombies[i].position.x = (MAP_WIDTH - 1) * TILE_PX;
+                game->zombies[i].ghostVel.x = -game->zombies[i].ghostVel.x;
+            }
+
+            if (game->zombies[i].position.y < 0) {
+                game->zombies[i].position.y = 0;
+                game->zombies[i].ghostVel.y = -game->zombies[i].ghostVel.y;
+            }
+            else if (game->zombies[i].position.y > (MAP_HEIGHT - 1) * TILE_PX) {
+                game->zombies[i].position.y = (MAP_HEIGHT - 1) * TILE_PX;
+                game->zombies[i].ghostVel.y = -game->zombies[i].ghostVel.y;
+            }
+
+            // Sync grid row/col
+            game->zombies[i].row = (int)((game->zombies[i].position.y + TILE_PX / 2.0f) / TILE_PX);
+            game->zombies[i].col = (int)((game->zombies[i].position.x + TILE_PX / 2.0f) / TILE_PX);
+            continue;
+        }
+
         // Custom Boss attacks cycle
         if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
             game->zombies[i].shootTimer += dt;
@@ -249,11 +295,8 @@ void UpdateZombies(GameState* game, float dt) {
         float len = sqrtf(dx * dx + dy * dy);
 
         if (len > 2.0f) {
-            float moveSpeed = 55.0f;
-            if (game->zombies[i].type == ENEMY_RAT_KING) moveSpeed = 40.0f;
-            else if (game->zombies[i].type == ENEMY_DOOM_SCROLLER) moveSpeed = 0.0f;
-            else if (game->zombies[i].type == ENEMY_ALGORITHM) moveSpeed = 45.0f;
-            else if (game->zombies[i].type == ENEMY_BRAINROT_GOD) moveSpeed = 50.0f;
+            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            float moveSpeed = props.moveSpeed;
 
             if (moveSpeed > 0.0f) {
                 float stepX = (dx / len) * moveSpeed * dt;
@@ -277,94 +320,12 @@ void UpdateZombies(GameState* game, float dt) {
     }
 }
 
-void SpawnDoomScroller(GameState* game) {
-    int slot = -1;
-    for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) {
-            slot = i;
-            break;
-        }
-    }
-    if (slot == -1) return;
-
-    for (int attempt = 0; attempt < 100; attempt++) {
-        int r = GetRandomValue(2, MAP_HEIGHT - 3);
-        int c = GetRandomValue(2, MAP_WIDTH - 3);
-        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-            game->zombies[slot].row = r;
-            game->zombies[slot].col = c;
-            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-            game->zombies[slot].active = true;
-            game->zombies[slot].health = 400.0f;
-            game->zombies[slot].maxHealth = 400.0f;
-            game->zombies[slot].type = ENEMY_DOOM_SCROLLER;
-            game->zombies[slot].shootTimer = 0.0f;
-            game->doomScrollerSpawned = true;
-            break;
-        }
-    }
-}
-
-void SpawnAlgorithm(GameState* game) {
-    int slot = -1;
-    for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) {
-            slot = i;
-            break;
-        }
-    }
-    if (slot == -1) return;
-
-    for (int attempt = 0; attempt < 100; attempt++) {
-        int r = GetRandomValue(2, MAP_HEIGHT - 3);
-        int c = GetRandomValue(2, MAP_WIDTH - 3);
-        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-            game->zombies[slot].row = r;
-            game->zombies[slot].col = c;
-            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-            game->zombies[slot].active = true;
-            game->zombies[slot].health = 200.0f;
-            game->zombies[slot].maxHealth = 200.0f;
-            game->zombies[slot].type = ENEMY_ALGORITHM;
-            game->zombies[slot].shootTimer = 0.0f;
-            game->algorithmSpawned = true;
-            break;
-        }
-    }
-}
-
-void SpawnBrainrotGod(GameState* game) {
-    int slot = -1;
-    for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) {
-            slot = i;
-            break;
-        }
-    }
-    if (slot == -1) return;
-
-    for (int attempt = 0; attempt < 100; attempt++) {
-        int r = GetRandomValue(2, MAP_HEIGHT - 3);
-        int c = GetRandomValue(2, MAP_WIDTH - 3);
-        if (GetTileType(game->map.tiles[r][c]) == TILE_GROUND) {
-            game->zombies[slot].row = r;
-            game->zombies[slot].col = c;
-            game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-            game->zombies[slot].active = true;
-            game->zombies[slot].health = 600.0f;
-            game->zombies[slot].maxHealth = 600.0f;
-            game->zombies[slot].type = ENEMY_BRAINROT_GOD;
-            game->zombies[slot].shootTimer = 0.0f;
-            game->brainrotGodSpawned = true;
-            break;
-        }
-    }
-}
-
 void SpawnMemoryFragments(GameState* game) {
-    game->curiosityActivated = false;
-    game->knowledgeActivated = false;
-    game->truthActivated = false;
+    const char* names[3] = { "CURIOSITY", "KNOWLEDGE", "TRUTH" };
+    for (int i = 0; i < 3; i++) {
+        game->fragments[i].activated = false;
+        game->fragments[i].name = names[i];
+    }
     
     Vector2 spots[3];
     int spotCount = 0;
@@ -391,7 +352,7 @@ void SpawnMemoryFragments(GameState* game) {
         spots[2] = (Vector2){ 25 * TILE_PX, 8 * TILE_PX };
     }
     
-    game->curiosityPos = spots[0];
-    game->knowledgePos = spots[1];
-    game->truthPos = spots[2];
+    game->fragments[0].position = spots[0];
+    game->fragments[1].position = spots[1];
+    game->fragments[2].position = spots[2];
 }

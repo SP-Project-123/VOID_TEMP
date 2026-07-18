@@ -1,6 +1,16 @@
 #include "common.h"
 #include <stdlib.h>
 
+BossId GetBossId(EnemyType type) {
+    switch (type) {
+        case ENEMY_RAT_KING:      return BOSS_RAT_KING;
+        case ENEMY_DOOM_SCROLLER: return BOSS_DOOM_SCROLLER;
+        case ENEMY_ALGORITHM:     return BOSS_ALGORITHM;
+        case ENEMY_BRAINROT_GOD:  return BOSS_BRAINROT_GOD;
+        default:                  return (BossId)-1;
+    }
+}
+
 void OnZombieDeath(GameState* game, int idx) {
     game->zombies[idx].active = false;
     for (int a = 0; a < MAX_ASH_EFFECTS; a++) {
@@ -13,52 +23,75 @@ void OnZombieDeath(GameState* game, int idx) {
         }
     }
 
-    if (game->zombies[idx].type == ENEMY_RAT_KING) {
-        game->bossDefeated = true;
-        game->showBossLog = true;
-        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-        int r = game->zombies[idx].row;
-        int c = game->zombies[idx].col;
-        game->map.tiles[r][c] = 236;
-        if (c + 1 < MAP_WIDTH) game->map.tiles[r][c + 1] = 237;
-    }
-    else if (game->zombies[idx].type == ENEMY_DOOM_SCROLLER) {
-        game->doomScrollerDefeated = true;
-        game->showDoomScrollerLog = true;
-        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-        SpawnAlgorithm(game);
-        PlaySound(game->blastSound);
-    }
-    else if (game->zombies[idx].type == ENEMY_ALGORITHM) {
-        game->algorithmDefeated = true;
-        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-        SpawnBrainrotGod(game);
-        SpawnMemoryFragments(game);
-        PlaySound(game->blastSound);
-    }
-    else if (game->zombies[idx].type == ENEMY_BRAINROT_GOD) {
-        game->brainrotGodDefeated = true;
-        for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
-        GameHistory_SaveEntry(game->playerName, 3, true);
-        game->state = STATE_WIN;
+    BossId bid = GetBossId(game->zombies[idx].type);
+    if (bid != (BossId)-1) {
+        game->bosses[bid].defeated = true;
+        if (bid == BOSS_RAT_KING || bid == BOSS_DOOM_SCROLLER) {
+            game->bosses[bid].showLog = true;
+        }
+        for (int z = 0; z < MAX_ZOMBIES; z++) {
+            game->zombies[z].active = false;
+        }
+
+        if (bid == BOSS_RAT_KING) {
+            int r = game->zombies[idx].row;
+            int c = game->zombies[idx].col;
+            game->map.tiles[r][c] = 236;
+            if (c + 1 < MAP_WIDTH) game->map.tiles[r][c + 1] = 237;
+        }
+        else if (bid == BOSS_DOOM_SCROLLER) {
+            SpawnEnemy(game, ENEMY_ALGORITHM, -1, -1);
+            PlaySound(game->blastSound);
+        }
+        else if (bid == BOSS_ALGORITHM) {
+            game->bosses[bid].showLog = true;
+            SpawnEnemy(game, ENEMY_BRAINROT_GOD, -1, -1);
+            SpawnMemoryFragments(game);
+            PlaySound(game->blastSound);
+        }
+        else if (bid == BOSS_BRAINROT_GOD) {
+            GameHistory_SaveEntry(game->playerName, 3, false);
+            currentLevel = 3;
+            UnloadTexture(game->map.tileset);
+            Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
+            
+            Player_Init(&game->player);
+            game->player.position.x = 2.0f * TILE_PX;
+            game->player.position.y = 2.0f * TILE_PX;
+            game->player.gridX = 2;
+            game->player.gridY = 2;
+            
+            game->state = STATE_SURVIVAL;
+            game->zombieTimer = 0.0f;
+            game->zombieSpawnTimer = 0.0f;
+            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+            game->startTextTimer = 4.0f;
+            
+            game->checkpointPosition = game->player.position;
+            game->checkpointLevel = currentLevel;
+            game->checkpointState = STATE_SURVIVAL;
+            game->checkpointActive = true;
+            PlaySound(game->blastSound);
+        }
     }
 }
 
-bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float baseRadius) {
+bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float size) {
     if (!game->zombies[i].active) return false;
-    Vector2 zCenter = { game->zombies[i].position.x + TILE_PX / 2.0f, game->zombies[i].position.y + TILE_PX / 2.0f };
-    float hitRadius = baseRadius;
-    if (game->zombies[i].type == ENEMY_RAT_KING || game->zombies[i].type == ENEMY_ALGORITHM) hitRadius += 20.0f;
-    else if (game->zombies[i].type == ENEMY_DOOM_SCROLLER) hitRadius += 28.0f;
-    else if (game->zombies[i].type == ENEMY_BRAINROT_GOD) hitRadius += 40.0f;
-
-    float dx = hitPos.x - zCenter.x;
-    float dy = hitPos.y - zCenter.y;
-    return (dx * dx + dy * dy) < (hitRadius * hitRadius);
+    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+    float zSize = TILE_PX * props.scale;
+    float offset = (props.scale - 1.0f) / 2.0f;
+    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+    
+    Rectangle hitRec = { hitPos.x - size / 2.0f, hitPos.y - size / 2.0f, size, size };
+    return CheckCollisionRecs(zRec, hitRec);
 }
 
 void DamageZombie(GameState* game, int idx, float damage) {
     if (!game->zombies[idx].active) return;
+    if (game->zombies[idx].type == ENEMY_BRAINROT_GOD && damage != 200.0f) {
+        return;
+    }
     game->zombies[idx].health -= damage;
     if (game->zombies[idx].health <= 0.0f) {
         game->zombies[idx].health = 0.0f;
@@ -82,4 +115,75 @@ void SpawnGun(GameState* game) {
             }
         }
     }
+}
+
+EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
+    EnemyProperties props = { 30.0f, 55.0f, 331, 1.0f, WHITE, 0.0f };
+    switch (type) {
+        case ENEMY_SNAKE:
+            props.maxHealth = 30.0f;
+            props.moveSpeed = 55.0f;
+            props.baseTileId = (level == 1) ? 20 : 331;
+            break;
+        case ENEMY_SPIDER:
+            props.maxHealth = 30.0f;
+            props.moveSpeed = 55.0f;
+            props.baseTileId = 23;
+            break;
+        case ENEMY_GHOST:
+            props.maxHealth = 40.0f;
+            props.moveSpeed = 65.0f;
+            props.baseTileId = 25;
+            break;
+        case ENEMY_RAT_KING:
+            props.maxHealth = 300.0f;
+            props.moveSpeed = 40.0f;
+            props.baseTileId = 23;
+            props.scale = 2.5f;
+            props.color = PURPLE;
+            props.hitboxOffset = 20.0f;
+            break;
+        case ENEMY_DOOM_SCROLLER:
+            props.maxHealth = 400.0f;
+            props.moveSpeed = 0.0f;
+            props.baseTileId = 306;
+            props.scale = 3.0f;
+            props.color = RED;
+            props.hitboxOffset = 28.0f;
+            break;
+        case ENEMY_ALGORITHM:
+            props.maxHealth = 200.0f;
+            props.moveSpeed = 45.0f;
+            props.baseTileId = 308;
+            props.scale = 2.5f;
+            props.color = VIOLET;
+            props.hitboxOffset = 20.0f;
+            break;
+        case ENEMY_BRAINROT_GOD:
+            props.maxHealth = 600.0f;
+            props.moveSpeed = 50.0f;
+            props.baseTileId = 27;
+            props.scale = 4.0f;
+            props.color = WHITE;
+            props.hitboxOffset = 40.0f;
+            break;
+    }
+
+    float diffSpeedMult = (difficulty == 0) ? 0.8f : (difficulty == 1) ? 1.0f : 1.25f;
+    float diffHpMult = (difficulty == 0) ? 0.75f : (difficulty == 1) ? 1.0f : 1.35f;
+
+    float levelSpeedMult = 1.0f + (level * 0.2f);
+    float levelHpMult = 1.0f + (level * 0.2f);
+
+    if (type == ENEMY_SNAKE || type == ENEMY_SPIDER || type == ENEMY_GHOST) {
+        props.moveSpeed *= (diffSpeedMult * levelSpeedMult);
+        props.maxHealth *= (diffHpMult * levelHpMult);
+    } else {
+        float bossSpeedMult = (difficulty == 0) ? 0.8f : (difficulty == 1) ? 1.1f : 1.3f;
+        float bossHpMult = (difficulty == 0) ? 0.8f : (difficulty == 1) ? 1.1f : 1.5f;
+        props.moveSpeed *= bossSpeedMult;
+        props.maxHealth *= bossHpMult;
+    }
+
+    return props;
 }

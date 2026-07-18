@@ -2,3 +2,12 @@ rr - Level 1 Cleared
 gg - Level 1 Cleared
 gg - Level 2 Cleared (Victory)
 gg - Level 2 Cleared
+  - Level 1 Cleared
+  - Level 3 Cleared
+ - Level 3 Cleared (Victory)
+  - Level 1 Cleared
+hh - Level 1 Cleared
+hh - Level 2 Cleared
+hh - Level 3 Cleared (Victory)
+hh - Level 1 Cleared
+hh - Level 2 Cleared

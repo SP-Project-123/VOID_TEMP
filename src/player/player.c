@@ -24,7 +24,7 @@ void Player_Init(Player* self) {
     self->gridX = (int)(self->position.x / TILE_PX);
     self->gridY = (int)(self->position.y / TILE_PX);
     self->direction = DIR_DOWN;
-    self->hasWeapon = true; // Give weapon for testing or by default
+    self->hasWeapon = (currentLevel > 0);
     self->isAttacking = false;
     self->attackTimer = 0.0f;
     self->lightAttackCooldown = 0.0f;
@@ -37,6 +37,19 @@ void Player_Init(Player* self) {
     self->maxHealth = 100.0f;
 }
 
+static bool Player_CanMoveTo(const Tilemap* map, float x, float y) {
+    float margin = 2.0f; // Small margin to prevent getting stuck on corners
+    float size = 30.0f;  // Player size is 32x32, checking up to width/height of 30.0f
+    
+    // Check all 4 corners of the bounding box
+    if (!Tilemap_IsWalkable(map, x + margin, y + margin)) return false;
+    if (!Tilemap_IsWalkable(map, x + size, y + margin)) return false;
+    if (!Tilemap_IsWalkable(map, x + margin, y + size)) return false;
+    if (!Tilemap_IsWalkable(map, x + size, y + size)) return false;
+    
+    return true;
+}
+
 void Player_Update(Player* self, const Tilemap* map, float dt) {
     self->isMoving = false;
     float nextX = self->position.x;
@@ -47,8 +60,8 @@ void Player_Update(Player* self, const Tilemap* map, float dt) {
     else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  { nextX -= self->speed * dt; self->isMoving = true; self->direction = DIR_LEFT; }
     else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) { nextX += self->speed * dt; self->isMoving = true; self->direction = DIR_RIGHT; }
 
-    if (Tilemap_IsWalkable(map, nextX, self->position.y)) self->position.x = nextX;
-    if (Tilemap_IsWalkable(map, self->position.x, nextY)) self->position.y = nextY;
+    if (Player_CanMoveTo(map, nextX, self->position.y)) self->position.x = nextX;
+    if (Player_CanMoveTo(map, self->position.x, nextY)) self->position.y = nextY;
     
     self->gridX = (int)(self->position.x / TILE_PX);
     self->gridY = (int)(self->position.y / TILE_PX);

@@ -48,11 +48,44 @@ typedef struct {
 typedef enum {
     ENEMY_SNAKE,
     ENEMY_SPIDER,
+    ENEMY_GHOST,
     ENEMY_RAT_KING,
     ENEMY_DOOM_SCROLLER,
     ENEMY_ALGORITHM,
     ENEMY_BRAINROT_GOD
 } EnemyType;
+
+// --- Unified Boss Status System ---
+typedef enum {
+    BOSS_RAT_KING = 0,
+    BOSS_DOOM_SCROLLER = 1,
+    BOSS_ALGORITHM = 2,
+    BOSS_BRAINROT_GOD = 3
+} BossId;
+
+typedef struct {
+    bool spawned;
+    bool defeated;
+    bool showLog;
+    int tileId;
+} BossStatus;
+
+// --- Memory Fragment System ---
+typedef struct {
+    bool activated;
+    Vector2 position;
+    const char* name;
+} MemoryFragment;
+
+// --- Unified Enemy/Boss Properties ---
+typedef struct {
+    float maxHealth;
+    float moveSpeed;
+    int baseTileId;
+    float scale;
+    Color color;
+    float hitboxOffset;
+} EnemyProperties;
 
 // --- Zombie / Enemy Struct ---
 typedef struct {
@@ -64,6 +97,7 @@ typedef struct {
     EnemyType type;
     float shootTimer;
     Vector2 position;
+    Vector2 ghostVel;
 } Zombie;
 
 // --- Enemy Ranged Projectile ---
@@ -172,22 +206,11 @@ typedef struct {
     int gunCol;
     float gunAbilityTimer;
     float gunSpawnTimer;
-    bool bossSpawned;
-    bool bossDefeated;
-    bool showBossLog;
-    bool doomScrollerSpawned;
-    bool doomScrollerDefeated;
-    bool showDoomScrollerLog;
-    bool algorithmSpawned;
-    bool algorithmDefeated;
-    bool brainrotGodSpawned;
-    bool brainrotGodDefeated;
-    bool curiosityActivated;
-    bool knowledgeActivated;
-    bool truthActivated;
-    Vector2 curiosityPos;
-    Vector2 knowledgePos;
-    Vector2 truthPos;
+    BossStatus bosses[4];
+    MemoryFragment fragments[3];
+    int difficulty;
+    GameMode cutsceneTargetState;
+    int cutsceneTargetLevel;
 } GameState;
 
 // --- Global Level Tracker ---
@@ -205,7 +228,7 @@ void GameHistory_Load(GameHistory* history);
 
 // --- Boss & Combat Helper Functions ---
 void OnZombieDeath(GameState* game, int idx);
-bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float baseRadius);
+bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float size);
 void DamageZombie(GameState* game, int idx, float damage);
 void SpawnGun(GameState* game);
 
@@ -216,6 +239,7 @@ float MeasureCustomText(const GameState* game, const char* text, float fontSize)
 
 // --- UI Screen Draw Routines ---
 void DrawMenuScreen(const GameState* game);
+void DrawNamePromptScreen(const GameState* game);
 void DrawInfoScreen(const GameState* game);
 void DrawHistoryScreen(const GameState* game);
 void DrawTeamScreen(const GameState* game);
@@ -241,11 +265,10 @@ void UpdateGame(GameState* game, float dt);
 void DrawGame(const GameState* game);
 
 void SpawnZombie(GameState* game);
-void SpawnRatKing(GameState* game, int r, int c);
-void SpawnDoomScroller(GameState* game);
-void SpawnAlgorithm(GameState* game);
-void SpawnBrainrotGod(GameState* game);
+void SpawnEnemy(GameState* game, EnemyType type, int r, int c);
 void SpawnMemoryFragments(GameState* game);
 void UpdateZombies(GameState* game, float dt);
+BossId GetBossId(EnemyType type);
+EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty);
 
 #endif
