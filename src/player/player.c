@@ -17,7 +17,7 @@ void Player_Init(Player* self) {
         self->position.x = 2.0f * TILE_PX;
         self->position.y = 2.0f * TILE_PX;
     }
-    self->speed = 120.0f;
+    self->speed = PLAYER_SPEED;
     self->currentObjective = 0;
     self->isMoving = false;
     self->animFrame = 0;
@@ -34,8 +34,8 @@ void Player_Init(Player* self) {
     self->radiusCooldown = 0.0f;
     self->radiusBlastTimer = 0.0f;
     self->isAimingSuperpower = false;
-    self->health = 100.0f;
-    self->maxHealth = 100.0f;
+    self->health = PLAYER_INITIAL_HEALTH;
+    self->maxHealth = PLAYER_MAX_HEALTH;
 }
 
 static bool Player_CanMoveTo(const Tilemap* map, float x, float y) {

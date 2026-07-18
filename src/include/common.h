@@ -13,18 +13,49 @@
 #define MAX_ZOMBIES 30
 
 // --- Gameplay Parameters & Configs ---
-#define GUN_ABILITY_DURATION 4.0f
+#define GUN_ABILITY_DURATION 6.0f
 #define GUN_SPAWN_TIMER_INITIAL 4.0f
 #define SUPERPOWER_COOLDOWN_MAX 8.0f
 #define SUPERPOWER_BLAST_DURATION 0.5f
 #define SUPERPOWER_READY_TIME 7.0f
 #define SUPERPOWER_RADIUS 80.0f
-#define SUPERPOWER_DAMAGE 50.0f
+#define SUPERPOWER_DAMAGE 200.0f
 #define LEVEL1_SPAWN_INTERVAL 2.5f
 #define LEVEL2_SPAWN_INTERVAL 1.8f
 #define LEVEL3_SPAWN_INTERVAL 1.2f
 #define TILE_MAYOR_ID 283
 #define TILE_CAVE_EXIT_L2 306
+
+// --- Gameplay Settings & Configurations ---
+#define PLAYER_INITIAL_LIVES 3
+#define PLAYER_INITIAL_HEALTH 200.0f
+#define PLAYER_MAX_HEALTH 200.0f
+#define PLAYER_SPEED 140.0f
+#define PLAYER_SWORD_DAMAGE 100.0f
+#define PLAYER_PROJECTILE_DAMAGE 200.0f
+
+#define ZOMBIE_DAMAGE_RATE 30.0f
+#define RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL 12.0f
+#define RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG 25.0f
+#define BRAINROT_GOD_PUZZLE_DAMAGE 200.0f
+
+// Enemy base health
+#define SNAKE_BASE_HP 30.0f
+#define SPIDER_BASE_HP 30.0f
+#define GHOST_BASE_HP 40.0f
+#define RAT_KING_BASE_HP 300.0f
+#define DOOM_SCROLLER_BASE_HP 400.0f
+#define ALGORITHM_BASE_HP 200.0f
+#define BRAINROT_GOD_BASE_HP 600.0f
+
+// Enemy base movement speed
+#define SNAKE_BASE_SPEED 55.0f
+#define SPIDER_BASE_SPEED 55.0f
+#define GHOST_BASE_SPEED 65.0f
+#define RAT_KING_BASE_SPEED 40.0f
+#define DOOM_SCROLLER_BASE_SPEED 0.0f
+#define ALGORITHM_BASE_SPEED 45.0f
+#define BRAINROT_GOD_BASE_SPEED 50.0f
 
 // --- Tile Types ---
 #define TILE_GROUND 0
@@ -237,6 +268,8 @@ typedef struct {
     int potionRow;
     int potionCol;
     bool potionSpawned;
+    int bossRow;
+    int bossCol;
 } GameState;
 
 // --- Global Level Tracker ---

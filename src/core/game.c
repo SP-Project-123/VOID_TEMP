@@ -99,7 +99,7 @@ void GameState_Init(GameState* self) {
     self->difficulty = 1;
     self->playerName[0] = '\0';
     self->playerNameLength = 0;
-    self->lives = 3;
+    self->lives = PLAYER_INITIAL_LIVES;
     self->checkpointActive = false;
     self->checkpointPosition = (Vector2){ 0, 0 };
     self->checkpointLevel = 0;
@@ -227,22 +227,27 @@ void LoadLevel(GameState* game, int levelIndex) {
     for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
     for (int e = 0; e < MAX_ENEMY_PROJECTILES; e++) game->enemyProjectiles[e].active = false;
 
+    game->bossRow = -1;
+    game->bossCol = -1;
     if (levelIndex == 1) {
-        int bossRow = 10, bossCol = 10;
+        game->bossRow = 10;
+        game->bossCol = 10;
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
                 if (game->map.tiles[y][x] == 23) {
-                    bossRow = y;
-                    bossCol = x;
+                    game->bossRow = y;
+                    game->bossCol = x;
                     game->map.tiles[y][x] = 17; // Replace static boss tile with walkable floor
                 }
             }
         }
         SpawnZombie(game);
         SpawnZombie(game);
-        SpawnEnemy(game, ENEMY_RAT_KING, bossRow, bossCol);
+        SpawnEnemy(game, ENEMY_RAT_KING, game->bossRow, game->bossCol);
     } else if (levelIndex == 2) {
-        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, 16, 20);
+        game->bossRow = 16;
+        game->bossCol = 20;
+        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, game->bossRow, game->bossCol);
     }
 
     game->hasGun = false;
@@ -289,7 +294,7 @@ void GameState_TransitionFromCutscene(GameState* game) {
         game->cutsceneTargetState = (GameMode)-1;
     } else {
         LoadLevel(game, 0);
-        game->lives = 3;
+        game->lives = PLAYER_INITIAL_LIVES;
     }
     PlayMusicStream(game->bgMusic);
 }
@@ -344,7 +349,7 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
                     float offset = (props.scale - 1.0f) / 2.0f;
                     Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
                     if (CheckCollisionRecs(attackRec, zRec)) {
-                        DamageZombie(game, i, 100.0f);
+                        DamageZombie(game, i, PLAYER_SWORD_DAMAGE);
                     }
                 }
             }
@@ -421,7 +426,7 @@ static void UpdatePlayerProjectiles(GameState* game, float dt) {
             if (IsZombieHit(game, i, pos, 16.0f)) {
                 game->playerProjectiles[p].active = false;
                 PlaySound(game->hitSound);
-                DamageZombie(game, i, 500.0f);
+                DamageZombie(game, i, PLAYER_PROJECTILE_DAMAGE);
                 break;
             }
         }
@@ -652,7 +657,7 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
                     game->fragments[i].activated = true;
                     PlaySound(game->blastSound);
                     for (int z = 0; z < MAX_ZOMBIES; z++) {
-                        if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, 200.0f);
+                        if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, BRAINROT_GOD_PUZZLE_DAMAGE);
                     }
                 }
             }
@@ -666,7 +671,7 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
             float offset = (props.scale - 1.0f) / 2.0f;
             Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
             if (CheckCollisionRecs(pRec, zRec)) {
-                game->player.health -= 30.0f * dt;
+                game->player.health -= ZOMBIE_DAMAGE_RATE * dt;
                 if (game->hitSoundTimer <= 0.0f) {
                     PlaySound(game->hitSound);
                     game->hitSoundTimer = 0.5f;
@@ -679,20 +684,34 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
         game->player.health = 0.0f;
         if (game->checkpointActive && game->lives > 1) {
             game->lives--;
-            game->player.health = 100.0f;
+            game->player.health = PLAYER_INITIAL_HEALTH;
             
             if (currentLevel != game->checkpointLevel) {
                 LoadLevel(game, game->checkpointLevel);
             } else {
+                game->player.position = game->checkpointPosition;
+                game->player.gridX = (int)(game->player.position.x / TILE_PX);
+                game->player.gridY = (int)(game->player.position.y / TILE_PX);
+                game->state = game->checkpointState;
+
+                // Reset minor zombies, but preserve and reposition active bosses
+                for (int z = 0; z < MAX_ZOMBIES; z++) {
+                    if (game->zombies[z].active) {
+                        BossId bid = GetBossId(game->zombies[z].type);
+                        if (bid != (BossId)-1) {
+                            if (game->bossRow != -1 && game->bossCol != -1) {
+                                game->zombies[z].position = (Vector2){ game->bossCol * TILE_PX, game->bossRow * TILE_PX };
+                                game->zombies[z].row = game->bossRow;
+                                game->zombies[z].col = game->bossCol;
+                            }
+                        } else {
+                            game->zombies[z].active = false;
+                        }
+                    }
+                }
+
                 if (currentLevel == 0 && game->checkpointState == STATE_SURVIVAL) {
-                    game->player.position = game->checkpointPosition;
-                    game->player.gridX = (int)(game->player.position.x / TILE_PX);
-                    game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                    game->state = game->checkpointState;
-                    for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
                     for (int s = 0; s < 6; s++) SpawnZombie(game);
-                } else {
-                    LoadLevel(game, currentLevel);
                 }
             }
         } else {
@@ -709,7 +728,7 @@ static void UpdateGameOverState(GameState* game) {
         if (game->gameOverSelection == 0) {
             int levelToLoad = currentLevel;
             LoadLevel(game, levelToLoad);
-            game->lives = 3;
+            game->lives = PLAYER_INITIAL_LIVES;
         } else {
             game->state = STATE_MENU;
         }
@@ -815,7 +834,17 @@ static void DrawGameplayWorld(const GameState* game) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int tileID = game->map.tiles[y][x];
-            DrawTile(game->map.tileset, game->map.tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
+            if (tileID == 236 || tileID == 237) {
+                float gx = x * TILE_PX;
+                float gy = y * TILE_PX;
+                float xco = (float)((34 % game->spritesTilesPerRow) * TILE_SIZE);
+                float yco = (float)((34 / game->spritesTilesPerRow) * TILE_SIZE);
+                Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
+                Rectangle dest = { gx, gy, (float)TILE_PX, (float)TILE_PX };
+                DrawTexturePro(game->spritesTileset, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
+            } else {
+                DrawTile(game->map.tileset, game->map.tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
+            }
         }
     }
 

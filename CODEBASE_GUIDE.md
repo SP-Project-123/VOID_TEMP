@@ -192,11 +192,21 @@ Declared in `common.h` (line 217), defined in `game.c` (line 7). This is a **glo
 | `TILE_SIZE` | 8 | Source tile size in pixels |
 | `RENDER_ZOOM` | 4 | Zoom factor |
 | `TILE_PX` | 32 | Rendered tile size (8 × 4) |
-| `MAX_ZOMBIES` | 15 | Max simultaneous enemies |
+| `MAX_ZOMBIES` | 30 | Max simultaneous enemies |
 | `MAX_ENEMY_PROJECTILES` | 30 | Max enemy bullets on screen |
 | `MAX_PLAYER_PROJECTILES` | 20 | Max player bullets on screen |
 | `MAX_ASH_EFFECTS` | 50 | Max death visual effects |
 | `MAX_HISTORY_ENTRIES` | 8 | Max history lines displayed |
+| `PLAYER_INITIAL_LIVES` | 3 | Initial lives (lives decrement on death) |
+| `PLAYER_INITIAL_HEALTH` | 200.0f | Starting health |
+| `PLAYER_MAX_HEALTH` | 200.0f | Maximum player health |
+| `PLAYER_SPEED` | 140.0f | Player movement speed |
+| `PLAYER_SWORD_DAMAGE` | 100.0f | Player sword base damage |
+| `PLAYER_PROJECTILE_DAMAGE` | 200.0f | Player gun projectile damage |
+| `ZOMBIE_DAMAGE_RATE` | 30.0f | Enemy contact damage per second |
+| `RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL` | 12.0f | Small enemy projectile damage |
+| `RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG` | 25.0f | Large enemy projectile damage |
+| `BRAINROT_GOD_PUZZLE_DAMAGE` | 200.0f | Damage dealt to final boss per Memory Fragment |
 
 ### Tile Type IDs
 
@@ -487,7 +497,7 @@ This is the **central struct** holding ALL game state. Every system reads/writes
   1. Checks if any boss log is showing → blocks all input if so
   2. Updates music stream
   3. Decrements `hitSoundTimer` and `startTextTimer`
-  4. Handles **[M] key debug level switch**: cycles through levels 0→1→2→3→0, reloading maps and resetting state each time
+  4. Handles **[M] key debug level switch**: immediately transitions the player to the next level (or cutscene / win screen) matching regular level completion flow.
 
 - **STATE_MENU** (line 432):
   - UP/DOWN navigates menu (0-5)
@@ -518,19 +528,17 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 
 - **STATE_SURVIVAL** (line 569): **THE BIG ONE** (~165 lines)
   - `Player_Update()`
-  - Level 3 specific: checks player position for puzzle switches (tiles 59 → 17)
-  - Wave spawn: increments `zombieSpawnTimer`, spawns enemies based on level cooldown:
-    - Level 0: every 2.5s
-    - Level 1: every 1.8s
-    - Level 2: every 1.2s
+  - Level 3 specific: checks player position for puzzle switches (tiles 59 → 17) and processes a 2-minute collapse escape countdown timer (displays in HUD, results in Game Over if it reaches zero).
+  - Wave spawn: increments `zombieSpawnTimer`, spawns enemies based on level cooldown intervals.
   - Spawn count: `1 + currentLevel` per wave
   - Stops spawning when level boss is defeated (levels 1-2) or on level 3
-  - `UpdateZombies()` — all enemy AI
+  - `UpdateZombies()` — all enemy AI (including separation logic)
   - Checks if player stepped on Cave tile → level transition
+  - Potion pickup: picking up the map's potion restores player health to maximum
   - Radius powerup: charges after 7s survival, activated with F key, 8s cooldown
-  - Brainrot God fragment mechanic: collecting fragments deals 200 damage to the boss
-  - Collision damage: if enemy occupies same cell as player → 30 dmg/sec
-  - Death: if health ≤ 0, either checkpoint respawn (if lives > 1) or game over
+  - Brainrot God fragment mechanic: collecting fragments deals `BRAINROT_GOD_PUZZLE_DAMAGE` (200) damage to the boss
+  - Collision damage: if enemy occupies same cell as player → `ZOMBIE_DAMAGE_RATE` (30) dmg/sec
+  - Death: if health ≤ 0, decrements lives and cleanly reloads level (levels 1-3) or respawns at sewer checkpoint (level 0) if lives > 1, else transitions to Game Over
   - On game over: saves history entry
 
 - **STATE_GAMEOVER** (line 737): UP/DOWN selects Retry (restarts) or Quit (menu)
@@ -675,7 +683,7 @@ This is the **central struct** holding ALL game state. Every system reads/writes
   - Moves all active projectiles
   - Deactivates out-of-bounds ones
   - Checks collision with player: circle collision with radius 14 (small) or 22 (big)
-  - Deals 12 (small) or 25 (big) damage
+  - Deals `RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL` (small) or `RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG` (big) damage
 - **Phase 3 — Movement** (line 184):
   - **Ghost**: Moves in straight line, bounces off map boundaries, syncs grid position from center
   - **Brainrot God attack cycle** (5-second loop):
@@ -684,7 +692,8 @@ This is the **central struct** holding ALL game state. Every system reads/writes
     - 4.0s: "Sigma Shockwave" — proximity damage if player within 120px
     - Resets at 5.0s
   - **Doom Scroller**: Fires 4 directional projectiles every 1.5s (up/down/left/right)
-  - **All other enemies**: Chase player using normalized direction vector × moveSpeed × dt
+  - **All other walking/chasing enemies**: Chase player using normalized direction vector × moveSpeed × dt
+  - **Separation behavior**: Walking enemies run a loop checking other active neighbors, applying an accumulative separation force vector that pushes them away from overlapping positions (based on sum of their size scales) to prevent stacking.
   - X and Y axes checked independently for wall collision
 
 #### `void SpawnMemoryFragments(GameState* game)` (line 323)
@@ -909,15 +918,16 @@ Enemy: offset=4, boxSize=TILE_PX-8=24
 
 ### Attack Rectangle Math
 
-When player attacks in a direction:
+When player attacks, a sword hitbox of size `(TILE_PX, TILE_PX)` (equal to the player's height/width) is spawned directly 1 tile in front of the player (offset by `TILE_PX` in their facing direction):
 ```
-dx, dy = direction offset (e.g., RIGHT → dx=1, dy=0)
-rx = (playerCol + dx) × TILE_PX
-ry = (playerRow + dy) × TILE_PX
-rw = TILE_PX (or TILE_PX × 2 if horizontal)
-rh = TILE_PX (or TILE_PX × 2 if vertical)
+rx = playerX
+ry = playerY
+if (direction == DIR_UP) ry -= TILE_PX
+else if (direction == DIR_DOWN) ry += TILE_PX
+else if (direction == DIR_LEFT) rx -= TILE_PX
+else if (direction == DIR_RIGHT) rx += TILE_PX
 ```
-The attack area is 1 tile in front, stretched to 2 tiles in the movement direction.
+The attack area and visual slash flash match this boundary exactly.
 
 ### Health Bar Rendering
 
@@ -1269,13 +1279,16 @@ A: Percentage = health/maxHealth. Green ≥ 60%, Orange 30-60%, Red < 30%.
 A: Menu → Enter name → Intro cutscene (14s) → Explore level 0 → Find Mayor → Dialogue → Survival mode → Kill enemies → Find cave → Level 1 → Fight Rat King → Level 2 → Fight Doom Scroller → Algorithm → Brainrot God (use fragments) → Level 3 → Reach exit → Victory.
 
 **Q: How does the checkpoint system work?**
-A: When entering survival mode, checkpoint saves position, level, and state. On death with lives remaining, player respawns at checkpoint with full HP. Lives decrease by 1. On 0 lives → game over.
+A: When entering survival mode, checkpoint saves position, level, and state. On death with lives remaining, the player decrements their lives by 1 and cleanly reloads the level (levels 1-3) or respawns at the sewer checkpoint (level 0) with full HP. On 0 lives -> game over.
 
 **Q: How does the gun powerup work?**
-A: Spawns every 4 seconds on a random ground tile (≥3 tiles from player). Player picks up by walking over it. Grants 4 seconds of ranged attack (press SPACE to fire projectile in facing direction). Projectile deals 500 damage, travels at 350 px/s.
+A: Spawns every 4 seconds on a random ground tile (>=3 tiles from player). Player picks up by walking over it. Grants `GUN_ABILITY_DURATION` (6 seconds) of ranged attack (press SPACE to fire projectile in facing direction). Projectile deals `PLAYER_PROJECTILE_DAMAGE` damage, travels at 350 px/s.
 
 **Q: How does the radius blast work?**
-A: Charges after 7 seconds in survival mode. Hold F to aim (red circle indicator). Release to fire — deals 50 damage to all enemies within 160px radius. 8-second cooldown.
+A: Charges after 7 seconds in survival mode. Hold F to aim (red circle indicator). Release to fire — deals `SUPERPOWER_DAMAGE` to all enemies within 160px radius. 8-second cooldown.
+
+**Q: How does the Potion work?**
+A: One potion is randomly spawned at a walkable ground tile at the start of each map (at least 5 tiles away from the player spawn). Walking over it consumes it, plays the pickup sound, and heals the player back to maximum health.
 
 ### Code Quality Questions
 

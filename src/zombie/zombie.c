@@ -189,7 +189,7 @@ void UpdateZombies(GameState* game, float dt) {
         float pDx = pos.x - pCenter.x;
         float pDy = pos.y - pCenter.y;
         float collisionRadius = game->enemyProjectiles[i].isBig ? 22.0f : 14.0f;
-        float damageDealt = game->enemyProjectiles[i].isBig ? 25.0f : 12.0f;
+        float damageDealt = game->enemyProjectiles[i].isBig ? RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG : RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL;
 
         if (sqrtf(pDx * pDx + pDy * pDy) < collisionRadius) {
             game->enemyProjectiles[i].active = false;
