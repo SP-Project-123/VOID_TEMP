@@ -8,10 +8,10 @@ extern int currentLevel;
 
 // --- Tile Type Classification ---
 int GetTileType(int tileID) {
-    // 283 is designated as the Mayor tile
-    if (tileID == 283) return TILE_MAYOR;
-    // 236, 237, 306, 308, and 158 are designated as the Cave exit gate tiles
-    if (tileID == 236 || tileID == 237 || tileID == 306 || tileID == 308 || tileID == 158) return TILE_CAVE;
+    // TILE_MAYOR_ID is designated as the Mayor tile
+    if (tileID == TILE_MAYOR_ID) return TILE_MAYOR;
+    // 236, 237, TILE_CAVE_EXIT_L2, 308, and 158 are designated as the Cave exit gate tiles
+    if (tileID == 236 || tileID == 237 || tileID == TILE_CAVE_EXIT_L2 || tileID == 308 || tileID == 158) return TILE_CAVE;
     
     // Designated list of car tile IDs from map1.csv
     static const int carTiles[] = { 263, 287, 329, 330, 353,324,323,275,276, 354,313,181,101,288,183,347,348,349,350 };
@@ -24,7 +24,7 @@ int GetTileType(int tileID) {
         3,27,51,19, 20, 21, 22, 23, 43, 44, 45, 46, 47, 67, 68, 69, 70, 71, 83, 101, 121, 125, 126, 135, 170, 171, 185, 193, 198, 209, 210, 264,265,266,267,268,269, 288, 289, 290, 291, 292, 293,294,295,296,297,298, 312, 313,314,315,316,317,318,319,320,321,322, 314, 336, 337, 338, 344,336,337,338,339,340,341,342,343,344,345,346
     };
     static const int walkableL2[] = {
-        17, 64, 65, 158, 159,68,31,34,146,152
+        17, 64, 65, 158, 159, 68, 31, 34, 146, 152
     };
     static const int walkableL3[] = {
         192,193,194,195,196,197,198,199,200,201,202,203,216,217,218,219,220,221,222,223,224,225,226,227,133,132,180,181,182,183,184,185,156,157
@@ -77,7 +77,7 @@ void Tilemap_Load(Tilemap* self, const char* csvPath, const char* texturePath) {
     // Inject Level 2 specific configurations dynamically into Map 2
     if (currentLevel == 1) {
         // Place a cave in Map 2 at Row 15, Col 29 to allow Level 2 escape
-        self->tiles[15][29] = 306;
+        self->tiles[15][29] = TILE_CAVE_EXIT_L2;
         // Inject a few obstacles/walls in Level 2 for zombie pathing variety
         for (int i = 0; i < 6; i++) {
             self->tiles[8][10 + i] = 28;

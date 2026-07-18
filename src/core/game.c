@@ -168,7 +168,7 @@ void GameState_Init(GameState* self) {
     PlayMusicStream(self->bgMusic);
 }
 
-static const LevelConfig g_levelConfigs[4] = {
+const LevelConfig g_levelConfigs[4] = {
     { "map1.csv",     "tilemap_packed.png",        "OBJ: Find Mayor in Neo Ohio" },
     { "map2.csv",     "spirites_tilepacked.png",   "OBJ: Defeat Ohio Rat King" },
     { "map3.csv",     "tilemap_packed3.png",       "OBJ: Defeat Doom Scroller & Brainrot God" },
@@ -266,9 +266,7 @@ void UpdateGame(GameState* game, float dt) {
     if (game->hitSoundTimer > 0.0f) game->hitSoundTimer -= dt;
     if (game->startTextTimer > 0.0f) game->startTextTimer -= dt;
 
-    if (IsKeyPressed(KEY_M) && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL || game->state == STATE_CUTSCENE)) {
-        LoadLevel(game, (currentLevel + 1) % 4);
-    }
+
 
     int pCol = (int)(game->player.position.x / TILE_PX);
     int pRow = (int)(game->player.position.y / TILE_PX);
@@ -408,11 +406,11 @@ void UpdateGame(GameState* game, float dt) {
         case STATE_MENU: {
             if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
                 game->menuSelection--;
-                if (game->menuSelection < 0) game->menuSelection = 5;
+                if (game->menuSelection < 0) game->menuSelection = 4;
             }
             if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
                 game->menuSelection++;
-                if (game->menuSelection > 5) game->menuSelection = 0;
+                if (game->menuSelection > 4) game->menuSelection = 0;
             }
             if (game->menuSelection == 1) {
                 if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
@@ -422,10 +420,9 @@ void UpdateGame(GameState* game, float dt) {
                 }
             } else if (IsKeyPressed(KEY_ENTER)) {
                 if (game->menuSelection == 0) game->state = STATE_NAME_PROMPT;
-                else if (game->menuSelection == 2) { game->state = STATE_INFO; game->storyPage = 0; }
-                else if (game->menuSelection == 3) game->state = STATE_HISTORY;
-                else if (game->menuSelection == 4) game->state = STATE_TEAM;
-                else if (game->menuSelection == 5) CloseWindow();
+                else if (game->menuSelection == 2) game->state = STATE_HISTORY;
+                else if (game->menuSelection == 3) game->state = STATE_TEAM;
+                else if (game->menuSelection == 4) CloseWindow();
             }
             break;
         }
@@ -480,18 +477,7 @@ void UpdateGame(GameState* game, float dt) {
             break;
         }
 
-        case STATE_INFO: {
-            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
-                game->storyPage++;
-                if (game->storyPage > 4) game->storyPage = 0;
-            }
-            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
-                game->storyPage--;
-                if (game->storyPage < 0) game->storyPage = 4;
-            }
-            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) game->state = STATE_MENU;
-            break;
-        }
+
 
         case STATE_HISTORY:
         case STATE_TEAM: {
@@ -524,14 +510,10 @@ void UpdateGame(GameState* game, float dt) {
                     game->player.position.x = 25.0f * TILE_PX;
                     game->player.position.y = 23.0f * TILE_PX;
                     for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-                    SpawnZombie(game);
-                    SpawnZombie(game);
-                    SpawnZombie(game);
+                    for (int s = 0; s < 6; s++) SpawnZombie(game);
                 } else {
                     for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-                    SpawnZombie(game);
-                    SpawnZombie(game);
-                    SpawnZombie(game);
+                    for (int s = 0; s < 6; s++) SpawnZombie(game);
                 }
 
                 game->checkpointPosition = game->player.position;
@@ -574,11 +556,11 @@ void UpdateGame(GameState* game, float dt) {
             if (currentLevel == 3) canSpawn = false;
 
             game->zombieSpawnTimer += dt;
-            float spawnCooldown = (currentLevel == 0) ? 2.5f : (currentLevel == 1) ? 1.8f : 1.2f;
+            float spawnCooldown = (currentLevel == 0) ? LEVEL1_SPAWN_INTERVAL : (currentLevel == 1) ? LEVEL2_SPAWN_INTERVAL : LEVEL3_SPAWN_INTERVAL;
             if (game->zombieSpawnTimer >= spawnCooldown) {
                 game->zombieSpawnTimer = 0.0f;
                 if (canSpawn) {
-                    int spawnCount = 1 + currentLevel;
+                    int spawnCount = 2 + currentLevel * 2;
                     for (int s = 0; s < spawnCount; s++) {
                         SpawnZombie(game);
                     }
@@ -614,7 +596,7 @@ void UpdateGame(GameState* game, float dt) {
             }
 
             game->player.survivalTimer += dt;
-            if (game->player.survivalTimer >= 7.0f && game->player.radiusCooldown <= 0.0f) {
+            if (game->player.survivalTimer >= SUPERPOWER_READY_TIME && game->player.radiusCooldown <= 0.0f) {
                 game->player.radiusPowerupReady = true;
             }
 
@@ -624,8 +606,8 @@ void UpdateGame(GameState* game, float dt) {
             if (game->player.radiusPowerupReady && IsKeyReleased(KEY_F) && game->player.radiusCooldown <= 0.0f) {
                 PlaySound(game->blastSound);
                 game->player.radiusPowerupReady = false;
-                game->player.radiusCooldown = 8.0f;
-                game->player.radiusBlastTimer = 0.5f;
+                game->player.radiusCooldown = SUPERPOWER_COOLDOWN_MAX;
+                game->player.radiusBlastTimer = SUPERPOWER_BLAST_DURATION;
                 
                 Vector2 blastPos = { pCol * TILE_PX + TILE_PX/2.0f, pRow * TILE_PX + TILE_PX/2.0f };
                 for (int i = 0; i < MAX_ZOMBIES; i++) {
@@ -634,8 +616,8 @@ void UpdateGame(GameState* game, float dt) {
                         float zSize = TILE_PX * props.scale;
                         float offset = (props.scale - 1.0f) / 2.0f;
                         Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
-                        if (CheckCollisionCircleRec(blastPos, 80.0f, zRec)) {
-                            DamageZombie(game, i, 50.0f);
+                        if (CheckCollisionCircleRec(blastPos, SUPERPOWER_RADIUS, zRec)) {
+                            DamageZombie(game, i, SUPERPOWER_DAMAGE);
                         }
                     }
                 }
@@ -761,6 +743,24 @@ void DrawGame(const GameState* game) {
                 int tileID = game->map.tiles[y][x];
                 DrawTile(game->map.tileset, game->map.tilesPerRow, tileID, (float)(x * TILE_PX), (float)(y * TILE_PX));
             }
+        }
+
+        if (currentLevel == 3) {
+            float ex = 33 * TILE_PX;
+            float ey = 18 * TILE_PX;
+            float pulse = sinf(GetTime() * 4.0f);
+            DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
+            DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
+            DrawText("EXIT", ex - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, ey - 12, 10, GOLD);
+        }
+
+        if (currentLevel == 0) {
+            float mx = game->mayorCol * TILE_PX;
+            float my = game->mayorRow * TILE_PX;
+            float pulse = sinf(GetTime() * 4.0f);
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
+            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
+            DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
         }
 
         for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
@@ -911,7 +911,6 @@ void DrawGame(const GameState* game) {
 
     if (game->state == STATE_MENU) DrawMenuScreen(game);
     else if (game->state == STATE_NAME_PROMPT) DrawNamePromptScreen(game);
-    else if (game->state == STATE_INFO) DrawInfoScreen(game);
     else if (game->state == STATE_HISTORY) DrawHistoryScreen(game);
     else if (game->state == STATE_TEAM) DrawTeamScreen(game);
     else if (game->state == STATE_GAMEOVER) DrawGameOverScreen(game);

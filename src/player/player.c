@@ -60,8 +60,13 @@ void Player_Update(Player* self, const Tilemap* map, float dt) {
     else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))  { nextX -= self->speed * dt; self->isMoving = true; self->direction = DIR_LEFT; }
     else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) { nextX += self->speed * dt; self->isMoving = true; self->direction = DIR_RIGHT; }
 
-    if (Player_CanMoveTo(map, nextX, self->position.y)) self->position.x = nextX;
-    if (Player_CanMoveTo(map, self->position.x, nextY)) self->position.y = nextY;
+    if (Player_CanMoveTo(map, nextX, nextY)) {
+        self->position.x = nextX;
+        self->position.y = nextY;
+    } else {
+        if (Player_CanMoveTo(map, nextX, self->position.y)) self->position.x = nextX;
+        if (Player_CanMoveTo(map, self->position.x, nextY)) self->position.y = nextY;
+    }
     
     self->gridX = (int)(self->position.x / TILE_PX);
     self->gridY = (int)(self->position.y / TILE_PX);

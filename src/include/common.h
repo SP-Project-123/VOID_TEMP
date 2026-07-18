@@ -10,7 +10,21 @@
 #define RENDER_ZOOM 4
 #define TILE_PX (TILE_SIZE * RENDER_ZOOM)
 
-#define MAX_ZOMBIES 15
+#define MAX_ZOMBIES 30
+
+// --- Gameplay Parameters & Configs ---
+#define GUN_ABILITY_DURATION 4.0f
+#define GUN_SPAWN_TIMER_INITIAL 4.0f
+#define SUPERPOWER_COOLDOWN_MAX 8.0f
+#define SUPERPOWER_BLAST_DURATION 0.5f
+#define SUPERPOWER_READY_TIME 7.0f
+#define SUPERPOWER_RADIUS 80.0f
+#define SUPERPOWER_DAMAGE 50.0f
+#define LEVEL1_SPAWN_INTERVAL 2.5f
+#define LEVEL2_SPAWN_INTERVAL 1.8f
+#define LEVEL3_SPAWN_INTERVAL 1.2f
+#define TILE_MAYOR_ID 283
+#define TILE_CAVE_EXIT_L2 306
 
 // --- Tile Types ---
 #define TILE_GROUND 0
@@ -24,7 +38,6 @@ typedef enum {
     STATE_MENU,
     STATE_NAME_PROMPT,
     STATE_INTRO,
-    STATE_INFO,
     STATE_HISTORY,
     STATE_TEAM,
     STATE_EXPLORING,
@@ -115,6 +128,8 @@ typedef struct {
     const char* tilesetPng;
     const char* objectiveText;
 } LevelConfig;
+
+extern const LevelConfig g_levelConfigs[4];
 
 // --- Environmental Effects ---
 #define MAX_ASH_EFFECTS 50
@@ -248,7 +263,6 @@ float MeasureCustomText(const GameState* game, const char* text, float fontSize)
 // --- UI Screen Draw Routines ---
 void DrawMenuScreen(const GameState* game);
 void DrawNamePromptScreen(const GameState* game);
-void DrawInfoScreen(const GameState* game);
 void DrawHistoryScreen(const GameState* game);
 void DrawTeamScreen(const GameState* game);
 void DrawGameOverScreen(const GameState* game);

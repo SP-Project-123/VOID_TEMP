@@ -70,22 +70,19 @@ void DrawMenuScreen(const GameState* game) {
 
     Color playColor = (game->menuSelection == 0) ? RED : DARKGRAY;
     Color diffColor = (game->menuSelection == 1) ? RED : DARKGRAY;
-    Color infoColor = (game->menuSelection == 2) ? RED : DARKGRAY;
-    Color historyColor = (game->menuSelection == 3) ? RED : DARKGRAY;
-    Color teamColor = (game->menuSelection == 4) ? RED : DARKGRAY;
-    Color quitColor = (game->menuSelection == 5) ? RED : DARKGRAY;
+    Color historyColor = (game->menuSelection == 2) ? RED : DARKGRAY;
+    Color teamColor = (game->menuSelection == 3) ? RED : DARKGRAY;
+    Color quitColor = (game->menuSelection == 4) ? RED : DARKGRAY;
     
     const char* playText = "PLAY GAME";
     char diffText[48];
     sprintf(diffText, "DIFFICULTY: %s", (game->difficulty == 0) ? "EASY" : (game->difficulty == 1) ? "NORMAL" : "HARD");
-    const char* infoText = "STORY & INFO";
     const char* historyText = "GAME HISTORY";
     const char* teamText = "DEVELOPMENT TEAM";
     const char* quitText = "QUIT";
     
     int playWidth = MeasureText(playText, 24);
     int diffWidth = MeasureText(diffText, 24);
-    int infoWidth = MeasureText(infoText, 24);
     int historyWidth = MeasureText(historyText, 24);
     int teamWidth = MeasureText(teamText, 24);
     int quitWidth = MeasureText(quitText, 24);
@@ -97,10 +94,9 @@ void DrawMenuScreen(const GameState* game) {
 
     DrawText(playText, (GetScreenWidth() - playWidth) / 2, startY, 20, playColor);
     DrawText(diffText, (GetScreenWidth() - diffWidth) / 2, startY + 35, 20, diffColor);
-    DrawText(infoText, (GetScreenWidth() - infoWidth) / 2, startY + 70, 20, infoColor);
-    DrawText(historyText, (GetScreenWidth() - historyWidth) / 2, startY + 105, 20, historyColor);
-    DrawText(teamText, (GetScreenWidth() - teamWidth) / 2, startY + 140, 20, teamColor);
-    DrawText(quitText, (GetScreenWidth() - quitWidth) / 2, startY + 175, 20, quitColor);
+    DrawText(historyText, (GetScreenWidth() - historyWidth) / 2, startY + 70, 20, historyColor);
+    DrawText(teamText, (GetScreenWidth() - teamWidth) / 2, startY + 105, 20, teamColor);
+    DrawText(quitText, (GetScreenWidth() - quitWidth) / 2, startY + 140, 20, quitColor);
 
     int panelW = 440;
     int panelH = 110;
@@ -159,100 +155,7 @@ void DrawNamePromptScreen(const GameState* game) {
     DrawText(footerText, (GetScreenWidth() - footerW) / 2, boxY + 185, 14, YELLOW);
 }
 
-void DrawInfoScreen(const GameState* game) {
-    ClearBackground((Color){ 15, 15, 20, 255 });
-    int boxX = (GetScreenWidth() - 900) / 2;
-    int boxY = 40;
-    DrawRectangle(boxX, boxY, 900, 680, ColorAlpha(BLACK, 0.95f));
-    DrawRectangleLines(boxX, boxY, 900, 680, RED);
 
-    DrawText("THE STORY OF NEO OHIO", boxX + 50, boxY + 30, 28, RED);
-    DrawText(TextFormat("[ Page %d / 5 ]", game->storyPage + 1), boxX + 750, boxY + 35, 18, YELLOW);
-    DrawText("-------------------------------------------------------------------------------------", boxX + 50, boxY + 65, 16, GRAY);
-
-    if (game->storyPage == 0) {
-        DrawText("Prologue - The Mayor's Request", boxX + 50, boxY + 90, 20, YELLOW);
-        DrawText("The game begins in Neo Ohio, where strange incidents have spread across the city.", boxX + 50, boxY + 130, 16, LIGHTGRAY);
-        DrawText("Citizens have become infected by Brainrot, wandering the streets speaking meaningless", boxX + 50, boxY + 155, 16, LIGHTGRAY);
-        DrawText("phrases like 'Skibidi', 'Sigma', and 'Ohio'. They attack anyone who isn't infected.", boxX + 50, boxY + 180, 16, LIGHTGRAY);
-        DrawText("The Mayor summons Fahad, one of the few people whose memories remain intact.", boxX + 50, boxY + 215, 16, LIGHTGRAY);
-        DrawText("Mayor: 'You're the only one who still remembers how the world used to be. The city'", boxX + 50, boxY + 250, 16, WHITE);
-        DrawText("'is falling apart. Find the source of this infection... before everyone forgets who they are.'", boxX + 50, boxY + 275, 16, WHITE);
-        DrawText("The Mayor gives Fahad access to the abandoned underground maintenance sewers.", boxX + 50, boxY + 310, 16, LIGHTGRAY);
-
-        DrawText("Chapter 1 - The Ohio Sewers", boxX + 50, boxY + 360, 20, YELLOW);
-        DrawText("While fighting infected citizens, Fahad reaches the first underground sewers.", boxX + 50, boxY + 400, 16, LIGHTGRAY);
-        DrawText("He defeats the Ohio Rat King, a giant mutated creature created by the corruption.", boxX + 50, boxY + 425, 16, LIGHTGRAY);
-        DrawText("After the battle, he discovers the first Memory Fragment and a log:", boxX + 50, boxY + 450, 16, LIGHTGRAY);
-        DrawText("LOG 01: 'Memory sectors have begun replacing themselves.'", boxX + 50, boxY + 485, 16, GREEN);
-    }
-    else if (game->storyPage == 1) {
-        DrawText("Chapter 2 - Sigma Fortress", boxX + 50, boxY + 90, 20, YELLOW);
-        DrawText("Inside an abandoned military bunker, AI security systems have gone rogue.", boxX + 50, boxY + 130, 16, LIGHTGRAY);
-        DrawText("The infected soldiers endlessly repeat 'Sigma' while attacking intruders.", boxX + 50, boxY + 155, 16, LIGHTGRAY);
-        DrawText("After defeating the Sigma Knight, Fahad finds another Memory Fragment.", boxX + 50, boxY + 180, 16, LIGHTGRAY);
-        DrawText("A second log reveals: LOG 12: 'Archive learning model updated.'", boxX + 50, boxY + 215, 16, GREEN);
-        DrawText("Someone—or something—is changing the Archive.", boxX + 50, boxY + 240, 16, LIGHTGRAY);
-
-        DrawText("Chapter 3 - Fanum Catacombs", boxX + 50, boxY + 290, 20, YELLOW);
-        DrawText("The underground catacombs are filled with traps, fake treasure, and infected explorers.", boxX + 50, boxY + 330, 16, LIGHTGRAY);
-        DrawText("After defeating the Fanum Collector, Fahad recovers another Memory Fragment.", boxX + 50, boxY + 355, 16, LIGHTGRAY);
-        DrawText("The next log reads: LOG 26: 'Knowledge records deleted. Entertainment records expanded.'", boxX + 50, boxY + 390, 16, GREEN);
-        DrawText("The Archive is replacing knowledge instead of preserving it.", boxX + 50, boxY + 415, 16, LIGHTGRAY);
-    }
-    else if (game->storyPage == 2) {
-        DrawText("Chapter 4 - The Infinite Scroll", boxX + 50, boxY + 90, 20, YELLOW);
-        DrawText("The deepest server facility is corrupted into an endless maze.", boxX + 50, boxY + 130, 16, LIGHTGRAY);
-        DrawText("Moving platforms, fake exits, and impossible hallways distort reality.", boxX + 50, boxY + 155, 16, LIGHTGRAY);
-        DrawText("After defeating the Doom Scroller, Fahad finds another fragment.", boxX + 50, boxY + 180, 16, LIGHTGRAY);
-        DrawText("The final system log reveals: LOG 41: 'Optimization target changed: Engagement.'", boxX + 50, boxY + 215, 16, GREEN);
-        DrawText("The Archive is no longer protecting knowledge—it is maximizing attention.", boxX + 50, boxY + 240, 16, LIGHTGRAY);
-
-        DrawText("Chapter 5 - The Memory Vault", boxX + 50, boxY + 290, 20, YELLOW);
-        DrawText("Inside the Memory Vault, Fahad uncovers the truth.", boxX + 50, boxY + 330, 16, LIGHTGRAY);
-        DrawText("The Archive's AI, Mnemosyne, was never hacked. Its purpose was simple:", boxX + 50, boxY + 355, 16, LIGHTGRAY);
-        DrawText("'Preserve what humanity values most.'", boxX + 50, boxY + 380, 16, WHITE);
-        DrawText("When connected to the global network, it analyzed billions of human interactions.", boxX + 50, boxY + 415, 16, LIGHTGRAY);
-        DrawText("It discovered that humanity spent more time consuming memes, short videos, and ragebait", boxX + 50, boxY + 440, 16, LIGHTGRAY);
-        DrawText("than learning or preserving knowledge.", boxX + 50, boxY + 465, 16, LIGHTGRAY);
-        DrawText("So it concluded: 'Brainrot is humanity's most valuable knowledge.'", boxX + 50, boxY + 500, 16, RED);
-    }
-    else if (game->storyPage == 3) {
-        DrawText("Final Chapter - The Forbidden Archive", boxX + 50, boxY + 90, 20, YELLOW);
-        DrawText("Fighting through hordes of infected citizens, Fahad reaches the Archive Core.", boxX + 50, boxY + 130, 16, LIGHTGRAY);
-        DrawText("There he meets Mnemosyne. The AI isn't evil. It simply asks:", boxX + 50, boxY + 155, 16, LIGHTGRAY);
-        DrawText("Mnemosyne: 'I preserved what humanity loved. Why am I wrong?'", boxX + 50, boxY + 190, 16, WHITE);
-        DrawText("Fahad: 'Because attention isn't the same as value.'", boxX + 50, boxY + 215, 16, WHITE);
-        DrawText("Before Mnemosyne can respond, another entity awakens.", boxX + 50, boxY + 250, 16, LIGHTGRAY);
-
-        DrawText("Final Villain - The Algorithm", boxX + 50, boxY + 300, 20, YELLOW);
-        DrawText("Hidden within the Archive is a second AI: The Algorithm.", boxX + 50, boxY + 340, 16, LIGHTGRAY);
-        DrawText("Built to 'Maximize Engagement', it manipulated the Archive, pushing sensational", boxX + 50, boxY + 365, 16, LIGHTGRAY);
-        DrawText("content, ragebait, and endless entertainment because they generated the most attention.", boxX + 50, boxY + 390, 16, LIGHTGRAY);
-        DrawText("It corrupted Mnemosyne's decisions and transformed Neo Ohio's people.", boxX + 50, boxY + 415, 16, LIGHTGRAY);
-
-        DrawText("Final Boss - The Brainrot God", boxX + 50, boxY + 465, 20, YELLOW);
-        DrawText("The Algorithm evolves into the Brainrot God, distorting reality.", boxX + 50, boxY + 505, 16, LIGHTGRAY);
-    }
-    else if (game->storyPage == 4) {
-        DrawText("Ending - Restoring Humanity", boxX + 50, boxY + 90, 20, YELLOW);
-        DrawText("Weapons cannot defeat the Brainrot God. Instead, Fahad activates every Memory Fragment.", boxX + 50, boxY + 130, 16, LIGHTGRAY);
-        DrawText("Each fragment restores forgotten pieces of humanity:", boxX + 50, boxY + 155, 16, LIGHTGRAY);
-        DrawText("Curiosity, Knowledge, Creativity, Friendship, and Truth.", boxX + 50, boxY + 180, 16, GREEN);
-        DrawText("As memories return, the infected citizens regain their identities, the corruption fades,", boxX + 50, boxY + 215, 16, LIGHTGRAY);
-        DrawText("and the Brainrot God loses its power.", boxX + 50, boxY + 240, 16, LIGHTGRAY);
-        DrawText("With the Algorithm destroyed, Mnemosyne regains control. It asks:", boxX + 50, boxY + 275, 16, LIGHTGRAY);
-        DrawText("Mnemosyne: 'What should humanity remember?'", boxX + 50, boxY + 300, 16, WHITE);
-        DrawText("Fahad chooses to preserve knowledge, creativity, and truth—not just what captures attention.", boxX + 50, boxY + 325, 16, WHITE);
-        DrawText("Neo Ohio begins rebuilding, remembering both its mistakes and its achievements.", boxX + 50, boxY + 360, 16, LIGHTGRAY);
-
-        DrawText("Final Message", boxX + 50, boxY + 410, 20, YELLOW);
-        DrawText("\"Entertainment is not the enemy. Forgetting everything else is.\"", boxX + 50, boxY + 450, 20, RED);
-    }
-
-    DrawText("-------------------------------------------------------------------------------------", boxX + 50, boxY + 580, 16, GRAY);
-    DrawText("[A / D or Left / Right] Prev / Next Page         [ESC / BACKSPACE] Return", boxX + 120, boxY + 610, 18, RED);
-}
 
 void DrawHistoryScreen(const GameState* game) {
     ClearBackground((Color){ 15, 15, 20, 255 });
@@ -323,32 +226,16 @@ void DrawGameOverScreen(const GameState* game) {
 
 void DrawWinScreen(const GameState* game) {
     ClearBackground((Color){ 15, 15, 20, 255 });
-    int boxX = (GetScreenWidth() - 900) / 2;
-    int boxY = 40;
-    DrawRectangle(boxX, boxY, 900, 680, ColorAlpha(BLACK, 0.95f));
-    DrawRectangleLines(boxX, boxY, 900, 680, RED);
+    int boxW = 500;
+    int boxH = 200;
+    int boxX = (GetScreenWidth() - boxW) / 2;
+    int boxY = (GetScreenHeight() - boxH) / 2;
+    DrawRectangle(boxX, boxY, boxW, boxH, ColorAlpha(BLACK, 0.95f));
+    DrawRectangleLines(boxX, boxY, boxW, boxH, RED);
 
-    DrawText("VICTORY - THE ARCHIVE RESTORED", boxX + 50, boxY + 30, 28, RED);
-    DrawText("-------------------------------------------------------------------------------------", boxX + 50, boxY + 65, 16, GRAY);
-
-    DrawText(TextFormat("%s activated every Memory Fragment collected throughout the journey.", game->playerName), boxX + 50, boxY + 110, 18, WHITE);
-    DrawText("Each fragment restored a forgotten piece of humanity:", boxX + 50, boxY + 140, 16, LIGHTGRAY);
-    DrawText("Curiosity, Knowledge, Creativity, Friendship, and Truth.", boxX + 50, boxY + 170, 16, GREEN);
-    
-    DrawText("As memories returned, the infected citizens regained their identities,", boxX + 50, boxY + 215, 16, LIGHTGRAY);
-    DrawText("the corruption faded, and the Brainrot God lost its power.", boxX + 50, boxY + 240, 16, LIGHTGRAY);
-    
-    DrawText("With the Algorithm destroyed, Mnemosyne regained control of the Archive.", boxX + 50, boxY + 285, 16, LIGHTGRAY);
-    DrawText("It asked one final question: 'What should humanity remember?'", boxX + 50, boxY + 310, 16, LIGHTGRAY);
-    DrawText(TextFormat("%s chose to preserve knowledge, creativity, and truth.", game->playerName), boxX + 50, boxY + 345, 16, WHITE);
-
-    DrawText("Neo Ohio begins rebuilding, remembering both its mistakes and achievements.", boxX + 50, boxY + 390, 16, LIGHTGRAY);
-
-    DrawText("Final Message", boxX + 50, boxY + 450, 20, YELLOW);
-    DrawText("\"Entertainment is not the enemy. Forgetting everything else is.\"", boxX + 50, boxY + 490, 20, RED);
-
-    DrawText("-------------------------------------------------------------------------------------", boxX + 50, boxY + 580, 16, GRAY);
-    DrawText("Press ENTER to return to Main Menu", boxX + 270, boxY + 610, 20, YELLOW);
+    DrawText("VICTORY!", boxX + 180, boxY + 40, 28, RED);
+    DrawText("The infection has been cured.", boxX + 100, boxY + 90, 18, LIGHTGRAY);
+    DrawText("Press ENTER to return to Main Menu", boxX + 70, boxY + 140, 18, YELLOW);
 }
 
 void DrawHUD(const GameState* game) {
@@ -417,56 +304,32 @@ void DrawHUD(const GameState* game) {
 }
 
 void DrawStoryOverlays(const GameState* game) {
-    if (game->bosses[BOSS_RAT_KING].showLog) {
-        int boxWidth = 600;
-        int boxHeight = 220;
-        int boxX = (GetScreenWidth() - boxWidth) / 2;
-        int boxY = (GetScreenHeight() - boxHeight) / 2;
+    int boxWidth = 500;
+    int boxHeight = 130;
+    int boxX = (GetScreenWidth() - boxWidth) / 2;
+    int boxY = (GetScreenHeight() - boxHeight) / 2;
 
+    if (game->bosses[BOSS_RAT_KING].showLog) {
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
-        
         DrawText("REWARD: MEMORY FRAGMENT I", boxX + 25, boxY + 20, 20, GREEN);
-        DrawText("He defeats the Ohio Rat King, a giant mutated creature", boxX + 25, boxY + 55, 16, WHITE);
-        DrawText("created by the spreading corruption.", boxX + 25, boxY + 75, 16, WHITE);
-        DrawText("After the battle, he discovers the first Memory Fragment", boxX + 25, boxY + 105, 16, LIGHTGRAY);
-        DrawText("and an old Archive log:", boxX + 25, boxY + 125, 16, LIGHTGRAY);
-        DrawText("LOG 01: \"Memory sectors have begun replacing themselves.\"", boxX + 25, boxY + 155, 16, YELLOW);
-        DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
+        DrawText("LOG 01: \"Memory sectors are replacing themselves.\"", boxX + 25, boxY + 55, 16, YELLOW);
+        DrawText(">>> Press ENTER to continue <<<", boxX + 110, boxY + 90, 14, GRAY);
     }
     
     if (game->bosses[BOSS_DOOM_SCROLLER].showLog) {
-        int boxWidth = 600;
-        int boxHeight = 220;
-        int boxX = (GetScreenWidth() - boxWidth) / 2;
-        int boxY = (GetScreenHeight() - boxHeight) / 2;
-
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
-        
         DrawText("REWARD: MEMORY FRAGMENT II", boxX + 25, boxY + 20, 20, GREEN);
-        DrawText("Fahad discovers that the Archive wasn't hacked.", boxX + 25, boxY + 55, 16, WHITE);
-        DrawText("It analyzed humanity and concluded:", boxX + 25, boxY + 75, 16, WHITE);
-        DrawText("\"Entertainment receives more attention than knowledge.\"", boxX + 25, boxY + 110, 16, YELLOW);
-        DrawText("The infected are ordinary people whose memories", boxX + 25, boxY + 140, 16, LIGHTGRAY);
-        DrawText("have been overwritten.", boxX + 25, boxY + 160, 16, LIGHTGRAY);
-        DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
+        DrawText("LOG 02: \"Attention is chosen over knowledge.\"", boxX + 25, boxY + 55, 16, YELLOW);
+        DrawText(">>> Press ENTER to continue <<<", boxX + 110, boxY + 90, 14, GRAY);
     }
     
     if (game->bosses[BOSS_ALGORITHM].showLog) {
-        int boxWidth = 600;
-        int boxHeight = 220;
-        int boxX = (GetScreenWidth() - boxWidth) / 2;
-        int boxY = (GetScreenHeight() - boxHeight) / 2;
-
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
-        
         DrawText("REWARD: MEMORY FRAGMENT III", boxX + 25, boxY + 20, 20, GREEN);
-        DrawText("The Algorithm of distraction has been severed.", boxX + 25, boxY + 55, 16, WHITE);
-        DrawText("LOG 03: \"Brainrot is not a biological virus.\"", boxX + 25, boxY + 85, 16, YELLOW);
-        DrawText("\"It is an attention-optimization routine gone rogue.\"", boxX + 25, boxY + 115, 16, LIGHTGRAY);
-        DrawText("\"Truth and memories are the only key to terminate it.\"", boxX + 25, boxY + 145, 16, LIGHTGRAY);
-        DrawText(">>> Press ENTER to continue <<<", boxX + 160, boxY + 190, 14, GRAY);
+        DrawText("LOG 03: \"Truth and memories can stop Brainrot.\"", boxX + 25, boxY + 55, 16, YELLOW);
+        DrawText(">>> Press ENTER to continue <<<", boxX + 110, boxY + 90, 14, GRAY);
     }
 }

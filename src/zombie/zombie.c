@@ -251,11 +251,16 @@ void UpdateZombies(GameState* game, float dt) {
                 float nextX = game->zombies[i].position.x + stepX;
                 float nextY = game->zombies[i].position.y + stepY;
 
-                if (Zombie_CanMoveTo(&game->map, nextX, game->zombies[i].position.y)) {
+                if (Zombie_CanMoveTo(&game->map, nextX, nextY)) {
                     game->zombies[i].position.x = nextX;
-                }
-                if (Zombie_CanMoveTo(&game->map, game->zombies[i].position.x, nextY)) {
                     game->zombies[i].position.y = nextY;
+                } else {
+                    if (Zombie_CanMoveTo(&game->map, nextX, game->zombies[i].position.y)) {
+                        game->zombies[i].position.x = nextX;
+                    }
+                    if (Zombie_CanMoveTo(&game->map, game->zombies[i].position.x, nextY)) {
+                        game->zombies[i].position.y = nextY;
+                    }
                 }
             }
 
