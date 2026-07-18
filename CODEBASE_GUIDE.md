@@ -97,9 +97,10 @@ The game expects these files in the working directory:
 - `resources/slash.ogg` (or `.wav`) — sword slash sound
 - `resources/blast.wav` — explosion/blast sound
 - `resources/hit.wav` — damage taken sound
-- `cutscenes/cut1.wav`, `cutscenes/cut2.wav` — cutscene audio
+- `cutscenes/cut1.wav`, `cutscenes/cut2.wav`, `cutscenes/cutscene_cave.wav` — cutscene audio
 - `cutscenes/frames/cut1_001.png` to `cut1_152.png` — cutscene 1 frames
 - `cutscenes/frames/cut2_001.png` to `cut2_062.png` — cutscene 2 frames
+- `cutscenes/frames/cutscene_cave_001.png` to `cutscene_cave_240.png` — cave transition cutscene frames
 - `C:/Windows/Fonts/consola.ttf` (or `lucon.ttf`) — game font
 
 ---
@@ -252,11 +253,13 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 | `hitSoundTimer` | `float` | Cooldown between hit sounds (0.5s) |
 | `cut1Audio` | `Sound` | Cutscene 1 audio |
 | `cut2Audio` | `Sound` | Cutscene 2 audio |
-| `cutscenePart` | `int` | 0=cutscene1, 1=cutscene2 |
+| `cutCaveAudio` | `Sound` | Cave transition cutscene audio |
+| `cutscenePart` | `int` | 0=cutscene1, 1=cutscene2, 2=cutsceneCave |
 | `cutsceneTime` | `float` | Elapsed time during cutscene |
 | `cutscenesLoaded` | `bool` | Whether cutscene textures are loaded |
 | `cut1Textures[152]` | `Texture2D[]` | Cutscene 1 frame textures |
 | `cut2Textures[62]` | `Texture2D[]` | Cutscene 2 frame textures |
+| `cutCaveTextures[240]` | `Texture2D[]` | Cave transition cutscene frame textures |
 | `startTextTimer` | `float` | Level start banner fade timer (4s) |
 | `mayorRow`, `mayorCol` | `int` | Randomly chosen Mayor spawn position |
 | `playerTileset` | `Texture2D` | Player sprite sheet |
@@ -513,8 +516,9 @@ This is the **central struct** holding ALL game state. Every system reads/writes
 - **STATE_INTRO** (line 484):
   - Advances `cutsceneTime` by dt
   - Skippable with ENTER/SPACE/ESCAPE
-  - Cutscene 1 lasts 10s, then auto-transitions to cutscene 2 (4s)
-  - After cutscene 2: unloads cutscenes, calls `GameState_TransitionFromCutscene()`
+  - Cutscene 1 lasts 10s, then auto-transitions to cutscene 2 (4s).
+  - Cave transition cutscene (`cutscenePart = 2`) plays for 10s at 24 FPS with audio `cutscene_cave.wav` when transitioning from Level 0 to Level 1.
+  - After the active cutscene finishes: unloads cutscenes, calls `GameState_TransitionFromCutscene()`
 
 - **STATE_INFO** (line 507): LEFT/RIGHT pages through 5 story pages, ESCAPE returns
 - **STATE_HISTORY** / **STATE_TEAM** (line 520): Any key returns to menu

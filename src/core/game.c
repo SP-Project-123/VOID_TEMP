@@ -8,6 +8,7 @@ int currentLevel = 0;
 
 #define CUT1_FRAMES 152
 #define CUT2_FRAMES 62
+#define CUT_CAVE_FRAMES 240
 
 static void UpdatePlayerWeapon(GameState* game, float dt);
 static void UpdatePlayerProjectiles(GameState* game, float dt);
@@ -38,6 +39,10 @@ void GameState_LoadCutscenes(GameState* game) {
         sprintf(path, "cutscenes/frames/cut2_%03d.png", i + 1);
         game->cut2Textures[i] = LoadTexture(path);
     }
+    for (int i = 0; i < CUT_CAVE_FRAMES; i++) {
+        sprintf(path, "cutscenes/frames/cutscene_cave_%03d.png", i + 1);
+        game->cutCaveTextures[i] = LoadTexture(path);
+    }
     game->cutscenesLoaded = true;
 }
 
@@ -55,6 +60,12 @@ void GameState_UnloadCutscenes(GameState* game) {
             game->cut2Textures[i].id = 0;
         }
     }
+    for (int i = 0; i < CUT_CAVE_FRAMES; i++) {
+        if (game->cutCaveTextures[i].id > 0) {
+            UnloadTexture(game->cutCaveTextures[i]);
+            game->cutCaveTextures[i].id = 0;
+        }
+    }
     game->cutscenesLoaded = false;
 }
 
@@ -70,6 +81,7 @@ void GameState_Init(GameState* self) {
     self->hitSoundTimer = 0.0f;
     self->cut1Audio = LoadSound("cutscenes/cut1.wav");
     self->cut2Audio = LoadSound("cutscenes/cut2.wav");
+    self->cutCaveAudio = LoadSound("cutscenes/cutscene_cave.wav");
     self->cutscenePart = 0;
     self->cutsceneTime = 0.0f;
     self->cutscenesLoaded = false;
@@ -487,6 +499,7 @@ static void UpdateIntroState(GameState* game, float dt) {
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ESCAPE)) {
         StopSound(game->cut1Audio);
         StopSound(game->cut2Audio);
+        StopSound(game->cutCaveAudio);
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
         return;
@@ -499,6 +512,11 @@ static void UpdateIntroState(GameState* game, float dt) {
     }
     if (game->cutscenePart == 1 && game->cutsceneTime >= 4.0f) {
         StopSound(game->cut2Audio);
+        GameState_UnloadCutscenes(game);
+        GameState_TransitionFromCutscene(game);
+    }
+    if (game->cutscenePart == 2 && game->cutsceneTime >= 10.0f) {
+        StopSound(game->cutCaveAudio);
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
@@ -603,9 +621,9 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
                 
                 GameState_LoadCutscenes(game);
                 game->state = STATE_INTRO;
-                game->cutscenePart = 1;
+                game->cutscenePart = 2;
                 game->cutsceneTime = 0.0f;
-                PlaySound(game->cut2Audio);
+                PlaySound(game->cutCaveAudio);
                 
                 game->cutsceneTargetLevel = 1;
                 game->cutsceneTargetState = STATE_SURVIVAL;
@@ -763,9 +781,9 @@ void UpdateGame(GameState* game, float dt) {
             GameHistory_SaveEntry(game->playerName, 1, false);
             GameState_LoadCutscenes(game);
             game->state = STATE_INTRO;
-            game->cutscenePart = 1;
+            game->cutscenePart = 2;
             game->cutsceneTime = 0.0f;
-            PlaySound(game->cut2Audio);
+            PlaySound(game->cutCaveAudio);
             game->cutsceneTargetLevel = 1;
             game->cutsceneTargetState = STATE_SURVIVAL;
         } else if (currentLevel == 1) {
@@ -1026,18 +1044,39 @@ static void DrawGameplayWorld(const GameState* game) {
 void DrawGame(const GameState* game) {
     if (game->state == STATE_INTRO) {
         ClearBackground(BLACK);
-        int frameIndex = (int)(game->cutsceneTime * 15.0f);
+        int frameIndex = (game->cutscenePart == 2) ? (int)(game->cutsceneTime * 24.0f) : (int)(game->cutsceneTime * 15.0f);
         Texture2D frameTex = { 0 };
         if (game->cutscenePart == 0) {
             if (frameIndex >= 0 && frameIndex < CUT1_FRAMES) frameTex = game->cut1Textures[frameIndex];
-        } else {
+        } else if (game->cutscenePart == 1) {
             if (frameIndex >= 0 && frameIndex < CUT2_FRAMES) frameTex = game->cut2Textures[frameIndex];
+        } else if (game->cutscenePart == 2) {
+            if (frameIndex >= 0 && frameIndex < CUT_CAVE_FRAMES) frameTex = game->cutCaveTextures[frameIndex];
         }
 
         if (frameTex.id > 0) {
+            float screenW = (float)GetScreenWidth();
+            float screenH = (float)GetScreenHeight();
+            float texW = (float)frameTex.width;
+            float texH = (float)frameTex.height;
+
+            float screenAspect = screenW / screenH;
+            float texAspect = texW / texH;
+
+            Rectangle srcRect;
+            if (texAspect > screenAspect) {
+                float cropW = texH * screenAspect;
+                float cropX = (texW - cropW) / 2.0f;
+                srcRect = (Rectangle){ cropX, 0.0f, cropW, texH };
+            } else {
+                float cropH = texW / screenAspect;
+                float cropY = (texH - cropH) / 2.0f;
+                srcRect = (Rectangle){ 0.0f, cropY, texW, cropH };
+            }
+
             DrawTexturePro(frameTex, 
-                           (Rectangle){ 0, 0, (float)frameTex.width, (float)frameTex.height },
-                           (Rectangle){ 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() },
+                           srcRect,
+                           (Rectangle){ 0, 0, screenW, screenH },
                            (Vector2){0, 0}, 0.0f, WHITE);
         } else {
             DrawText("PLAYING CUTSCENE...", GetScreenWidth() / 2 - 120, GetScreenHeight() / 2 - 10, 20, RED);
@@ -1098,6 +1137,7 @@ void GameState_Unload(GameState* self) {
     UnloadSound(self->hitSound);
     UnloadSound(self->cut1Audio);
     UnloadSound(self->cut2Audio);
+    UnloadSound(self->cutCaveAudio);
     UnloadTexture(self->playerTileset);
     if (self->spritesTileset.id != self->playerTileset.id) {
         UnloadTexture(self->spritesTileset);

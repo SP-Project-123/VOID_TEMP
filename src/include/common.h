@@ -238,11 +238,13 @@ typedef struct {
     // --- Intro Video Cutscenes ---
     Sound cut1Audio;
     Sound cut2Audio;
-    int cutscenePart;      // 0 for cut1, 1 for cut2
+    Sound cutCaveAudio;
+    int cutscenePart;      // 0 for cut1, 1 for cut2, 2 for cutCave
     float cutsceneTime;    // Track elapsed time during intro
     bool cutscenesLoaded;
     Texture2D cut1Textures[152];
     Texture2D cut2Textures[62];
+    Texture2D cutCaveTextures[240];
     float startTextTimer;  // Timer for displaying the level start banner overlay
     int mayorRow;          // Randomly selected row for Mayor spawn
     int mayorCol;          // Randomly selected col for Mayor spawn
