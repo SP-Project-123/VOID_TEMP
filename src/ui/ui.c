@@ -260,7 +260,7 @@ void DrawHUD(const GameState* game) {
     else if (pct < 0.6f) hpColor = ORANGE;
     DrawRectangle(61, 69, 278 * pct, 14, hpColor);
 
-    DrawText("Press [M] to Switch Maps", 20, 118, 12, SKYBLUE);
+    DrawText(TextFormat("KILLS: %d", game->enemiesKilled), 20, 118, 14, ORANGE);
 
     if (game->hasGun) {
         DrawText("GUN", 20, 95, 14, SKYBLUE);

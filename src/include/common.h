@@ -233,6 +233,7 @@ typedef struct {
     int difficulty;
     GameMode cutsceneTargetState;
     int cutsceneTargetLevel;
+    int enemiesKilled;
 } GameState;
 
 // --- Global Level Tracker ---

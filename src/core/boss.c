@@ -12,6 +12,7 @@ BossId GetBossId(EnemyType type) {
 }
 
 void OnEnemyDeath(GameState* game, int idx) {
+    game->enemiesKilled++;
     game->zombies[idx].active = false;
     for (int a = 0; a < MAX_ASH_EFFECTS; a++) {
         if (!game->ashEffects[a].active) {
@@ -120,7 +121,7 @@ EnemyProperties GetEnemyProperties(EnemyType type, int level, int difficulty) {
         case ENEMY_RAT_KING:
             props.maxHealth = 300.0f;
             props.moveSpeed = 40.0f;
-            props.baseTileId = 24;
+            props.baseTileId = 23;
             props.scale = 2.5f;
             props.color = PURPLE;
             props.hitboxOffset = 20.0f;

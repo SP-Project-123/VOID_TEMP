@@ -181,6 +181,7 @@ void LoadLevel(GameState* game, int levelIndex) {
 
     // Set up Mayor on level 0
     if (levelIndex == 0) {
+        game->enemiesKilled = 0;
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int tid = game->map.tiles[y][x];
@@ -227,9 +228,19 @@ void LoadLevel(GameState* game, int levelIndex) {
     for (int e = 0; e < MAX_ENEMY_PROJECTILES; e++) game->enemyProjectiles[e].active = false;
 
     if (levelIndex == 1) {
+        int bossRow = 10, bossCol = 10;
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                if (game->map.tiles[y][x] == 23) {
+                    bossRow = y;
+                    bossCol = x;
+                    game->map.tiles[y][x] = 17; // Replace static boss tile with walkable floor
+                }
+            }
+        }
         SpawnZombie(game);
         SpawnZombie(game);
-        SpawnEnemy(game, ENEMY_RAT_KING, 10, 10);
+        SpawnEnemy(game, ENEMY_RAT_KING, bossRow, bossCol);
     } else if (levelIndex == 2) {
         SpawnEnemy(game, ENEMY_DOOM_SCROLLER, -1, -1);
     }
@@ -476,8 +487,15 @@ static void UpdateCutsceneState(GameState* game) {
         game->zombieSpawnTimer = 0.0f;
         
         if (currentLevel == 0) {
-            game->map.tiles[game->mayorRow][game->mayorCol] = 236;
-            game->map.tiles[game->mayorRow][game->mayorCol + 1] = 237;
+            // Clean up Mayor tile from the old spawn position
+            game->map.tiles[game->mayorRow][game->mayorCol] = 20;
+
+            // Spawn Cave Exit at hardcoded position (2, 2)
+            game->mayorRow = 2;
+            game->mayorCol = 2;
+            game->map.tiles[2][2] = 236;
+            game->map.tiles[2][3] = 237;
+
             game->player.position.x = 25.0f * TILE_PX;
             game->player.position.y = 23.0f * TILE_PX;
             for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
@@ -653,9 +671,12 @@ static void UpdateGameOverState(GameState* game) {
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) game->gameOverSelection = 1;
     if (IsKeyPressed(KEY_ENTER)) {
         if (game->gameOverSelection == 0) {
-            GameState_Init(game);
-            game->state = STATE_SURVIVAL;
-        } else game->state = STATE_MENU;
+            int levelToLoad = currentLevel;
+            LoadLevel(game, levelToLoad);
+            game->lives = 3;
+        } else {
+            game->state = STATE_MENU;
+        }
     }
 }
 
