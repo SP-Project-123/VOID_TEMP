@@ -10,7 +10,7 @@ extern int currentLevel;
 void SpawnEnemy(GameState* game, EnemyType type, int r, int c) {
     int slot = -1;
     for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) {
+        if (!game->enemies.list[i].active) {
             slot = i;
             break;
         }
@@ -43,37 +43,37 @@ void SpawnEnemy(GameState* game, EnemyType type, int r, int c) {
         }
     }
 
-    EnemyProperties props = GetEnemyProperties(type, currentLevel, game->difficulty);
-    game->zombies[slot].row = r;
-    game->zombies[slot].col = c;
-    game->zombies[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
-    game->zombies[slot].active = true;
-    game->zombies[slot].health = props.maxHealth;
-    game->zombies[slot].maxHealth = props.maxHealth;
-    game->zombies[slot].type = type;
+    EnemyProperties props = GetEnemyProperties(type, currentLevel, game->menu.difficulty);
+    game->enemies.list[slot].row = r;
+    game->enemies.list[slot].col = c;
+    game->enemies.list[slot].position = (Vector2){ (float)c * TILE_PX, (float)r * TILE_PX };
+    game->enemies.list[slot].active = true;
+    game->enemies.list[slot].health = props.maxHealth;
+    game->enemies.list[slot].maxHealth = props.maxHealth;
+    game->enemies.list[slot].type = type;
     
     if (type == ENEMY_SNAKE || type == ENEMY_SPIDER) {
-        game->zombies[slot].shootTimer = (float)GetRandomValue(0, 100) / 100.0f;
+        game->enemies.list[slot].shootTimer = (float)GetRandomValue(0, 100) / 100.0f;
     } else {
-        game->zombies[slot].shootTimer = 0.0f;
+        game->enemies.list[slot].shootTimer = 0.0f;
         BossId bid = GetBossId(type);
         if (bid != (BossId)-1) {
-            game->bosses[bid].spawned = true;
-            game->bosses[bid].defeated = false;
-            game->bosses[bid].showLog = false;
+            game->enemies.status[bid].spawned = true;
+            game->enemies.status[bid].defeated = false;
+            game->enemies.status[bid].showLog = false;
         }
     }
 
     if (type == ENEMY_GHOST) {
         if (GetRandomValue(0, 1) == 0) {
-            game->zombies[slot].ghostVel.x = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
-            game->zombies[slot].ghostVel.y = 0.0f;
+            game->enemies.list[slot].ghostVel.x = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
+            game->enemies.list[slot].ghostVel.y = 0.0f;
         } else {
-            game->zombies[slot].ghostVel.y = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
-            game->zombies[slot].ghostVel.x = 0.0f;
+            game->enemies.list[slot].ghostVel.y = (GetRandomValue(0, 1) == 0) ? props.moveSpeed : -props.moveSpeed;
+            game->enemies.list[slot].ghostVel.x = 0.0f;
         }
     } else {
-        game->zombies[slot].ghostVel = (Vector2){ 0, 0 };
+        game->enemies.list[slot].ghostVel = (Vector2){ 0, 0 };
     }
 }
 
@@ -91,7 +91,7 @@ void SpawnZombie(GameState* game) {
 static void ShootSpiderProjectile(GameState* game, Vector2 startPos, Vector2 targetPos, bool isBig) {
     int projSlot = -1;
     for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
-        if (!game->enemyProjectiles[i].active) {
+        if (!game->enemies.projectiles[i].active) {
             projSlot = i;
             break;
         }
@@ -104,11 +104,11 @@ static void ShootSpiderProjectile(GameState* game, Vector2 startPos, Vector2 tar
     if (len < 0.001f) len = 1.0f;
 
     float speed = isBig ? 150.0f : 180.0f;
-    game->enemyProjectiles[projSlot].position = startPos;
-    game->enemyProjectiles[projSlot].velocity = (Vector2){ (dx / len) * speed, (dy / len) * speed };
-    game->enemyProjectiles[projSlot].active = true;
-    game->enemyProjectiles[projSlot].isBig = isBig;
-    game->enemyProjectiles[projSlot].lifeTimer = 2.5f;
+    game->enemies.projectiles[projSlot].position = startPos;
+    game->enemies.projectiles[projSlot].velocity = (Vector2){ (dx / len) * speed, (dy / len) * speed };
+    game->enemies.projectiles[projSlot].active = true;
+    game->enemies.projectiles[projSlot].isBig = isBig;
+    game->enemies.projectiles[projSlot].lifeTimer = 2.5f;
 }
 
 static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
@@ -134,25 +134,25 @@ static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
 void UpdateZombies(GameState* game, float dt) {
     // 1. Ranged Enemy & Boss Firing Logic (Single Unified Attack Type)
     for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) continue;
+        if (!game->enemies.list[i].active) continue;
 
-        if (game->zombies[i].type == ENEMY_SPIDER ||
-            game->zombies[i].type == ENEMY_RAT_KING ||
-            game->zombies[i].type == ENEMY_DOOM_SCROLLER ||
-            game->zombies[i].type == ENEMY_BRAINROT_GOD) {
-            game->zombies[i].shootTimer += dt;
-            float interval = (game->zombies[i].type == ENEMY_SPIDER) ? 1.8f : 1.5f;
-            if (game->zombies[i].shootTimer >= interval) {
-                game->zombies[i].shootTimer = 0.0f;
+        if (game->enemies.list[i].type == ENEMY_SPIDER ||
+            game->enemies.list[i].type == ENEMY_RAT_KING ||
+            game->enemies.list[i].type == ENEMY_DOOM_SCROLLER ||
+            game->enemies.list[i].type == ENEMY_BRAINROT_GOD) {
+            game->enemies.list[i].shootTimer += dt;
+            float interval = (game->enemies.list[i].type == ENEMY_SPIDER) ? 1.8f : 1.5f;
+            if (game->enemies.list[i].shootTimer >= interval) {
+                game->enemies.list[i].shootTimer = 0.0f;
                 Vector2 startPos = {
-                    game->zombies[i].position.x + TILE_PX / 2.0f,
-                    game->zombies[i].position.y + TILE_PX / 2.0f
+                    game->enemies.list[i].position.x + TILE_PX / 2.0f,
+                    game->enemies.list[i].position.y + TILE_PX / 2.0f
                 };
                 Vector2 targetPos = {
                     game->player.position.x + TILE_PX / 2.0f,
                     game->player.position.y + TILE_PX / 2.0f
                 };
-                bool isBig = (game->zombies[i].type == ENEMY_RAT_KING || game->zombies[i].type == ENEMY_BRAINROT_GOD);
+                bool isBig = (game->enemies.list[i].type == ENEMY_RAT_KING || game->enemies.list[i].type == ENEMY_BRAINROT_GOD);
                 ShootSpiderProjectile(game, startPos, targetPos, isBig);
             }
         }
@@ -160,20 +160,20 @@ void UpdateZombies(GameState* game, float dt) {
 
     // 2. Projectile Updates & Damage Logic
     for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
-        if (!game->enemyProjectiles[i].active) continue;
+        if (!game->enemies.projectiles[i].active) continue;
 
-        game->enemyProjectiles[i].lifeTimer -= dt;
-        if (game->enemyProjectiles[i].lifeTimer <= 0.0f) {
-            game->enemyProjectiles[i].active = false;
+        game->enemies.projectiles[i].lifeTimer -= dt;
+        if (game->enemies.projectiles[i].lifeTimer <= 0.0f) {
+            game->enemies.projectiles[i].active = false;
             continue;
         }
 
-        game->enemyProjectiles[i].position.x += game->enemyProjectiles[i].velocity.x * dt;
-        game->enemyProjectiles[i].position.y += game->enemyProjectiles[i].velocity.y * dt;
+        game->enemies.projectiles[i].position.x += game->enemies.projectiles[i].velocity.x * dt;
+        game->enemies.projectiles[i].position.y += game->enemies.projectiles[i].velocity.y * dt;
 
-        Vector2 pos = game->enemyProjectiles[i].position;
+        Vector2 pos = game->enemies.projectiles[i].position;
         if (pos.x < 0 || pos.x > MAP_WIDTH * TILE_PX || pos.y < 0 || pos.y > MAP_HEIGHT * TILE_PX) {
-            game->enemyProjectiles[i].active = false;
+            game->enemies.projectiles[i].active = false;
             continue;
         }
 
@@ -182,7 +182,7 @@ void UpdateZombies(GameState* game, float dt) {
         if (row >= 0 && row < MAP_HEIGHT && col >= 0 && col < MAP_WIDTH) {
             int tileType = GetTileType(game->map.tiles[row][col]);
             if (tileType == TILE_WALL) {
-                game->enemyProjectiles[i].active = false;
+                game->enemies.projectiles[i].active = false;
                 continue;
             }
         }
@@ -190,60 +190,60 @@ void UpdateZombies(GameState* game, float dt) {
         Vector2 pCenter = { game->player.position.x + TILE_PX / 2.0f, game->player.position.y + TILE_PX / 2.0f };
         float pDx = pos.x - pCenter.x;
         float pDy = pos.y - pCenter.y;
-        float collisionRadius = game->enemyProjectiles[i].isBig ? 22.0f : 14.0f;
-        float damageDealt = game->enemyProjectiles[i].isBig ? RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG : RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL;
+        float collisionRadius = game->enemies.projectiles[i].isBig ? 22.0f : 14.0f;
+        float damageDealt = game->enemies.projectiles[i].isBig ? RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG : RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL;
 
         if (sqrtf(pDx * pDx + pDy * pDy) < collisionRadius) {
-            game->enemyProjectiles[i].active = false;
+            game->enemies.projectiles[i].active = false;
             game->player.health -= damageDealt;
-            if (game->hitSoundTimer <= 0.0f) {
-                PlaySound(game->hitSound);
-                game->hitSoundTimer = 0.25f;
+            if (game->audio.hitTimer <= 0.0f) {
+                PlaySound(game->audio.hit);
+                game->audio.hitTimer = 0.25f;
             }
         }
     }
 
     // 3. Smooth Movement Updates
     for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (!game->zombies[i].active) continue;
+        if (!game->enemies.list[i].active) continue;
 
-        if (game->zombies[i].type == ENEMY_GHOST) {
-            game->zombies[i].position.x += game->zombies[i].ghostVel.x * dt;
-            game->zombies[i].position.y += game->zombies[i].ghostVel.y * dt;
+        if (game->enemies.list[i].type == ENEMY_GHOST) {
+            game->enemies.list[i].position.x += game->enemies.list[i].ghostVel.x * dt;
+            game->enemies.list[i].position.y += game->enemies.list[i].ghostVel.y * dt;
 
             // Bounce check at screen boundaries
-            if (game->zombies[i].position.x < 0) {
-                game->zombies[i].position.x = 0;
-                game->zombies[i].ghostVel.x = -game->zombies[i].ghostVel.x;
+            if (game->enemies.list[i].position.x < 0) {
+                game->enemies.list[i].position.x = 0;
+                game->enemies.list[i].ghostVel.x = -game->enemies.list[i].ghostVel.x;
             }
-            else if (game->zombies[i].position.x > (MAP_WIDTH - 1) * TILE_PX) {
-                game->zombies[i].position.x = (MAP_WIDTH - 1) * TILE_PX;
-                game->zombies[i].ghostVel.x = -game->zombies[i].ghostVel.x;
+            else if (game->enemies.list[i].position.x > (MAP_WIDTH - 1) * TILE_PX) {
+                game->enemies.list[i].position.x = (MAP_WIDTH - 1) * TILE_PX;
+                game->enemies.list[i].ghostVel.x = -game->enemies.list[i].ghostVel.x;
             }
 
-            if (game->zombies[i].position.y < 0) {
-                game->zombies[i].position.y = 0;
-                game->zombies[i].ghostVel.y = -game->zombies[i].ghostVel.y;
+            if (game->enemies.list[i].position.y < 0) {
+                game->enemies.list[i].position.y = 0;
+                game->enemies.list[i].ghostVel.y = -game->enemies.list[i].ghostVel.y;
             }
-            else if (game->zombies[i].position.y > (MAP_HEIGHT - 1) * TILE_PX) {
-                game->zombies[i].position.y = (MAP_HEIGHT - 1) * TILE_PX;
-                game->zombies[i].ghostVel.y = -game->zombies[i].ghostVel.y;
+            else if (game->enemies.list[i].position.y > (MAP_HEIGHT - 1) * TILE_PX) {
+                game->enemies.list[i].position.y = (MAP_HEIGHT - 1) * TILE_PX;
+                game->enemies.list[i].ghostVel.y = -game->enemies.list[i].ghostVel.y;
             }
 
             // Sync grid row/col
-            game->zombies[i].row = (int)((game->zombies[i].position.y + TILE_PX / 2.0f) / TILE_PX);
-            game->zombies[i].col = (int)((game->zombies[i].position.x + TILE_PX / 2.0f) / TILE_PX);
+            game->enemies.list[i].row = (int)((game->enemies.list[i].position.y + TILE_PX / 2.0f) / TILE_PX);
+            game->enemies.list[i].col = (int)((game->enemies.list[i].position.x + TILE_PX / 2.0f) / TILE_PX);
             continue;
         }
 
 
 
-        float dx = game->player.position.x - game->zombies[i].position.x;
-        float dy = game->player.position.y - game->zombies[i].position.y;
+        float dx = game->player.position.x - game->enemies.list[i].position.x;
+        float dy = game->player.position.y - game->enemies.list[i].position.y;
         float len = sqrtf(dx * dx + dy * dy);
 
         if (len > 2.0f) {
-            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
             float moveSpeed = props.moveSpeed;
 
             if (moveSpeed > 0.0f) {
@@ -255,13 +255,13 @@ void UpdateZombies(GameState* game, float dt) {
                 float selfRadius = (TILE_PX / 2.0f) * props.scale;
 
                 for (int j = 0; j < MAX_ZOMBIES; j++) {
-                    if (j == i || !game->zombies[j].active) continue;
+                    if (j == i || !game->enemies.list[j].active) continue;
                     
-                    float jdx = game->zombies[i].position.x - game->zombies[j].position.x;
-                    float jdy = game->zombies[i].position.y - game->zombies[j].position.y;
+                    float jdx = game->enemies.list[i].position.x - game->enemies.list[j].position.x;
+                    float jdy = game->enemies.list[i].position.y - game->enemies.list[j].position.y;
                     float dist = sqrtf(jdx * jdx + jdy * jdy);
                     
-                    EnemyProperties jProps = GetEnemyProperties(game->zombies[j].type, currentLevel, game->difficulty);
+                    EnemyProperties jProps = GetEnemyProperties(game->enemies.list[j].type, currentLevel, game->menu.difficulty);
                     float otherRadius = (TILE_PX / 2.0f) * jProps.scale;
                     float minDist = selfRadius + otherRadius - 4.0f;
 
@@ -279,24 +279,24 @@ void UpdateZombies(GameState* game, float dt) {
                     finalStepY = (finalStepY / finalLen) * moveSpeed;
                 }
 
-                float nextX = game->zombies[i].position.x + finalStepX * dt;
-                float nextY = game->zombies[i].position.y + finalStepY * dt;
+                float nextX = game->enemies.list[i].position.x + finalStepX * dt;
+                float nextY = game->enemies.list[i].position.y + finalStepY * dt;
 
                 if (Zombie_CanMoveTo(&game->map, nextX, nextY)) {
-                    game->zombies[i].position.x = nextX;
-                    game->zombies[i].position.y = nextY;
+                    game->enemies.list[i].position.x = nextX;
+                    game->enemies.list[i].position.y = nextY;
                 } else {
-                    if (Zombie_CanMoveTo(&game->map, nextX, game->zombies[i].position.y)) {
-                        game->zombies[i].position.x = nextX;
+                    if (Zombie_CanMoveTo(&game->map, nextX, game->enemies.list[i].position.y)) {
+                        game->enemies.list[i].position.x = nextX;
                     }
-                    if (Zombie_CanMoveTo(&game->map, game->zombies[i].position.x, nextY)) {
-                        game->zombies[i].position.y = nextY;
+                    if (Zombie_CanMoveTo(&game->map, game->enemies.list[i].position.x, nextY)) {
+                        game->enemies.list[i].position.y = nextY;
                     }
                 }
             }
 
-            game->zombies[i].row = (int)((game->zombies[i].position.y + TILE_PX / 2.0f) / TILE_PX);
-            game->zombies[i].col = (int)((game->zombies[i].position.x + TILE_PX / 2.0f) / TILE_PX);
+            game->enemies.list[i].row = (int)((game->enemies.list[i].position.y + TILE_PX / 2.0f) / TILE_PX);
+            game->enemies.list[i].col = (int)((game->enemies.list[i].position.x + TILE_PX / 2.0f) / TILE_PX);
         }
     }
 }
@@ -304,8 +304,8 @@ void UpdateZombies(GameState* game, float dt) {
 void SpawnMemoryFragments(GameState* game) {
     const char* names[3] = { "CURIOSITY", "KNOWLEDGE", "TRUTH" };
     for (int i = 0; i < 3; i++) {
-        game->fragments[i].activated = false;
-        game->fragments[i].name = names[i];
+        game->enemies.fragments[i].activated = false;
+        game->enemies.fragments[i].name = names[i];
     }
     
     Vector2 spots[3];
@@ -333,7 +333,7 @@ void SpawnMemoryFragments(GameState* game) {
         spots[2] = (Vector2){ 25 * TILE_PX, 8 * TILE_PX };
     }
     
-    game->fragments[0].position = spots[0];
-    game->fragments[1].position = spots[1];
-    game->fragments[2].position = spots[2];
+    game->enemies.fragments[0].position = spots[0];
+    game->enemies.fragments[1].position = spots[1];
+    game->enemies.fragments[2].position = spots[2];
 }

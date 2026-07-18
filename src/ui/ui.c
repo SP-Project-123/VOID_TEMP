@@ -68,15 +68,15 @@ void DrawMenuScreen(const GameState* game) {
     int subWidth = MeasureText(subtitle, 18);
     DrawText(subtitle, (GetScreenWidth() - subWidth) / 2, GetScreenHeight() / 4 + 70, 18, GRAY);
 
-    Color playColor = (game->menuSelection == 0) ? RED : DARKGRAY;
-    Color diffColor = (game->menuSelection == 1) ? RED : DARKGRAY;
-    Color historyColor = (game->menuSelection == 2) ? RED : DARKGRAY;
-    Color teamColor = (game->menuSelection == 3) ? RED : DARKGRAY;
-    Color quitColor = (game->menuSelection == 4) ? RED : DARKGRAY;
+    Color playColor = (game->menu.menuSelection == 0) ? RED : DARKGRAY;
+    Color diffColor = (game->menu.menuSelection == 1) ? RED : DARKGRAY;
+    Color historyColor = (game->menu.menuSelection == 2) ? RED : DARKGRAY;
+    Color teamColor = (game->menu.menuSelection == 3) ? RED : DARKGRAY;
+    Color quitColor = (game->menu.menuSelection == 4) ? RED : DARKGRAY;
     
     const char* playText = "PLAY GAME";
     char diffText[48];
-    sprintf(diffText, "DIFFICULTY: %s", (game->difficulty == 0) ? "EASY" : (game->difficulty == 1) ? "NORMAL" : "HARD");
+    sprintf(diffText, "DIFFICULTY: %s", (game->menu.difficulty == 0) ? "EASY" : (game->menu.difficulty == 1) ? "NORMAL" : "HARD");
     const char* historyText = "GAME HISTORY";
     const char* teamText = "DEVELOPMENT TEAM";
     const char* quitText = "QUIT";
@@ -88,7 +88,7 @@ void DrawMenuScreen(const GameState* game) {
     int quitWidth = MeasureText(quitText, 24);
     
     int startY = GetScreenHeight() / 2 - 40;
-    int selectY = startY + (game->menuSelection * 35);
+    int selectY = startY + (game->menu.menuSelection * 35);
     DrawRectangle((GetScreenWidth() - 360) / 2, selectY - 8, 360, 32, ColorAlpha(DARKGRAY, 0.2f));
     DrawRectangleLines((GetScreenWidth() - 360) / 2, selectY - 8, 360, 32, RED);
 
@@ -136,14 +136,14 @@ void DrawNamePromptScreen(const GameState* game) {
     DrawRectangleLines(inputX, inputY, inputW, inputH, GRAY);
 
     char nameDisplay[32];
-    if (game->playerNameLength > 0) {
-        strcpy(nameDisplay, game->playerName);
+    if (game->playerInfo.nameLength > 0) {
+        strcpy(nameDisplay, game->playerInfo.name);
     } else {
         strcpy(nameDisplay, "");
     }
     
     bool showCursor = (int)(GetTime() * 2.0f) % 2 == 0;
-    if (showCursor && game->playerNameLength < 15) {
+    if (showCursor && game->playerInfo.nameLength < 15) {
         strcat(nameDisplay, "_");
     }
 
@@ -217,8 +217,8 @@ void DrawGameOverScreen(const GameState* game) {
     
     DrawText("DEFEAT", bx + 100, by + 40, 24, (Color){ 139, 0, 0, 255 });
     
-    Color retryColor = (game->gameOverSelection == 0) ? (Color){ 139, 0, 0, 255 } : DARKGRAY;
-    Color quitColor = (game->gameOverSelection == 1) ? (Color){ 139, 0, 0, 255 } : DARKGRAY;
+    Color retryColor = (game->menu.gameOverSelection == 0) ? (Color){ 139, 0, 0, 255 } : DARKGRAY;
+    Color quitColor = (game->menu.gameOverSelection == 1) ? (Color){ 139, 0, 0, 255 } : DARKGRAY;
     
     DrawText("RETRY", bx + 115, by + 100, 20, retryColor);
     DrawText("QUIT", bx + 125, by + 140, 20, quitColor);
@@ -248,7 +248,7 @@ void DrawHUD(const GameState* game) {
                             "LEVEL 3: Archive Core";
     DrawText(levelName, 20, 20, 16, GREEN);
     
-    DrawText(TextFormat("PLAYER: %s  |  LIVES: %d", game->playerName, game->lives), 20, 45, 14, WHITE);
+    DrawText(TextFormat("PLAYER: %s  |  LIVES: %d", game->playerInfo.name, game->playerInfo.lives), 20, 45, 14, WHITE);
 
     DrawText("HP", 20, 68, 16, RED);
     DrawRectangle(60, 68, 280, 16, ColorAlpha(BLACK, 0.6f));
@@ -261,20 +261,20 @@ void DrawHUD(const GameState* game) {
     else if (pct < 0.6f) hpColor = ORANGE;
     DrawRectangle(61, 69, 278 * pct, 14, hpColor);
 
-    DrawText(TextFormat("KILLS: %d", game->enemiesKilled), 20, 118, 14, ORANGE);
+    DrawText(TextFormat("KILLS: %d", game->enemies.killedCount), 20, 118, 14, ORANGE);
 
     if (currentLevel == 3) {
-        int minutes = (int)(game->escapeTimer) / 60;
-        int seconds = (int)(game->escapeTimer) % 60;
-        Color timerColor = (game->escapeTimer < 30.0f) ? RED : ORANGE;
+        int minutes = (int)(game->levelInfo.escapeTimer) / 60;
+        int seconds = (int)(game->levelInfo.escapeTimer) % 60;
+        Color timerColor = (game->levelInfo.escapeTimer < 30.0f) ? RED : ORANGE;
         DrawText(TextFormat("COLLAPSE IN: %02d:%02d", minutes, seconds), 20, 138, 14, timerColor);
     }
 
-    if (game->hasGun) {
+    if (game->playerInfo.hasGun) {
         DrawText("GUN", 20, 95, 14, SKYBLUE);
         DrawRectangle(65, 95, 275, 14, ColorAlpha(BLACK, 0.6f));
         DrawRectangleLines(65, 95, 275, 14, DARKGRAY);
-        float gunPct = game->gunAbilityTimer / 4.0f;
+        float gunPct = game->playerInfo.gunAbilityTimer / 4.0f;
         if (gunPct < 0.0f) gunPct = 0.0f;
         DrawRectangle(66, 96, 273 * gunPct, 12, SKYBLUE);
     }
@@ -290,14 +290,14 @@ void DrawHUD(const GameState* game) {
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.9f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, RED);
         
-        DrawText(TextFormat("MAYOR: %s! Neo Ohio is infected with Brainrot!", game->playerName), boxX + 25, boxY + 20, 18, RED);
+        DrawText(TextFormat("MAYOR: %s! Neo Ohio is infected with Brainrot!", game->playerInfo.name), boxX + 25, boxY + 20, 18, RED);
         DrawText("Find the source of the infection in the sewers!", boxX + 25, boxY + 50, 16, YELLOW);
         DrawText(">>> Press ENTER to start Survival mode <<<", boxX + 25, boxY + 85, 16, LIGHTGRAY);
     } 
     else if (game->state == STATE_SURVIVAL) {
         int activeCount = 0;
         for (int i = 0; i < MAX_ZOMBIES; i++) {
-            if (game->zombies[i].active) activeCount++;
+            if (game->enemies.list[i].active) activeCount++;
         }
         static const char* objs[] = {
             "OBJ: Defeat Ohio Rat King",
@@ -317,7 +317,7 @@ void DrawStoryOverlays(const GameState* game) {
     int boxX = (GetScreenWidth() - boxWidth) / 2;
     int boxY = (GetScreenHeight() - boxHeight) / 2;
 
-    if (game->bosses[BOSS_RAT_KING].showLog) {
+    if (game->enemies.status[BOSS_RAT_KING].showLog) {
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
         DrawText("REWARD: MEMORY FRAGMENT I", boxX + 25, boxY + 20, 20, GREEN);
@@ -325,7 +325,7 @@ void DrawStoryOverlays(const GameState* game) {
         DrawText(">>> Press ENTER to continue <<<", boxX + 110, boxY + 90, 14, GRAY);
     }
     
-    if (game->bosses[BOSS_DOOM_SCROLLER].showLog) {
+    if (game->enemies.status[BOSS_DOOM_SCROLLER].showLog) {
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
         DrawText("REWARD: MEMORY FRAGMENT II", boxX + 25, boxY + 20, 20, GREEN);
@@ -333,7 +333,7 @@ void DrawStoryOverlays(const GameState* game) {
         DrawText(">>> Press ENTER to continue <<<", boxX + 110, boxY + 90, 14, GRAY);
     }
     
-    if (game->bosses[BOSS_ALGORITHM].showLog) {
+    if (game->enemies.status[BOSS_ALGORITHM].showLog) {
         DrawRectangle(boxX, boxY, boxWidth, boxHeight, ColorAlpha(BLACK, 0.95f));
         DrawRectangleLines(boxX, boxY, boxWidth, boxHeight, GOLD);
         DrawText("REWARD: MEMORY FRAGMENT III", boxX + 25, boxY + 20, 20, GREEN);

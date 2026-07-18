@@ -12,46 +12,46 @@ BossId GetBossId(EnemyType type) {
 }
 
 void OnEnemyDeath(GameState* game, int idx) {
-    game->enemiesKilled++;
-    game->zombies[idx].active = false;
+    game->enemies.killedCount++;
+    game->enemies.list[idx].active = false;
     for (int a = 0; a < MAX_ASH_EFFECTS; a++) {
-        if (!game->ashEffects[a].active) {
-            game->ashEffects[a].gridX = game->zombies[idx].col;
-            game->ashEffects[a].gridY = game->zombies[idx].row;
-            game->ashEffects[a].timer = 1.5f;
-            game->ashEffects[a].active = true;
+        if (!game->enemies.ashEffects[a].active) {
+            game->enemies.ashEffects[a].gridX = game->enemies.list[idx].col;
+            game->enemies.ashEffects[a].gridY = game->enemies.list[idx].row;
+            game->enemies.ashEffects[a].timer = 1.5f;
+            game->enemies.ashEffects[a].active = true;
             break;
         }
     }
 
-    BossId bid = GetBossId(game->zombies[idx].type);
+    BossId bid = GetBossId(game->enemies.list[idx].type);
     if (bid != (BossId)-1) {
-        game->bosses[bid].defeated = true;
+        game->enemies.status[bid].defeated = true;
         if (bid == BOSS_RAT_KING || bid == BOSS_DOOM_SCROLLER) {
-            game->bosses[bid].showLog = true;
+            game->enemies.status[bid].showLog = true;
         }
         for (int z = 0; z < MAX_ZOMBIES; z++) {
-            game->zombies[z].active = false;
+            game->enemies.list[z].active = false;
         }
 
         if (bid == BOSS_RAT_KING) {
-            int r = game->zombies[idx].row;
-            int c = game->zombies[idx].col;
+            int r = game->enemies.list[idx].row;
+            int c = game->enemies.list[idx].col;
             game->map.tiles[r][c] = 236;
             if (c + 1 < MAP_WIDTH) game->map.tiles[r][c + 1] = 237;
         }
         else if (bid == BOSS_DOOM_SCROLLER) {
             SpawnEnemy(game, ENEMY_ALGORITHM, 16, 20);
-            PlaySound(game->blastSound);
+            PlaySound(game->audio.blast);
         }
         else if (bid == BOSS_ALGORITHM) {
-            game->bosses[bid].showLog = true;
+            game->enemies.status[bid].showLog = true;
             SpawnEnemy(game, ENEMY_BRAINROT_GOD, 16, 20);
             SpawnMemoryFragments(game);
-            PlaySound(game->blastSound);
+            PlaySound(game->audio.blast);
         }
         else if (bid == BOSS_BRAINROT_GOD) {
-            GameHistory_SaveEntry(game->playerName, 3, false);
+            GameHistory_SaveEntry(game->playerInfo.name, 3, false);
             currentLevel = 3;
             UnloadTexture(game->map.tileset);
             Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
@@ -64,41 +64,41 @@ void OnEnemyDeath(GameState* game, int idx) {
             game->player.gridY = 2;
             
             game->state = STATE_SURVIVAL;
-            game->zombieTimer = 0.0f;
-            game->zombieSpawnTimer = 0.0f;
-            for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+            game->enemies.timer = 0.0f;
+            game->enemies.spawnTimer = 0.0f;
+            for (int z = 0; z < MAX_ZOMBIES; z++) game->enemies.list[z].active = false;
             for (int s = 0; s < 6; s++) SpawnZombie(game);
             
-            game->startTextTimer = 4.0f;
+            game->levelInfo.startTextTimer = 4.0f;
             
-            game->checkpointPosition = game->player.position;
-            game->checkpointLevel = currentLevel;
-            game->checkpointState = STATE_SURVIVAL;
-            game->checkpointActive = true;
-            PlaySound(game->blastSound);
+            game->playerInfo.checkpointPosition = game->player.position;
+            game->playerInfo.checkpointLevel = currentLevel;
+            game->playerInfo.checkpointState = STATE_SURVIVAL;
+            game->playerInfo.checkpointActive = true;
+            PlaySound(game->audio.blast);
         }
     }
 }
 
 bool IsZombieHit(const GameState* game, int i, Vector2 hitPos, float size) {
-    if (!game->zombies[i].active) return false;
-    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+    if (!game->enemies.list[i].active) return false;
+    EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
     float zSize = TILE_PX * props.scale;
     float offset = (props.scale - 1.0f) / 2.0f;
-    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+    Rectangle zRec = { game->enemies.list[i].position.x - TILE_PX * offset, game->enemies.list[i].position.y - TILE_PX * offset, zSize, zSize };
     
     Rectangle hitRec = { hitPos.x - size / 2.0f, hitPos.y - size / 2.0f, size, size };
     return CheckCollisionRecs(zRec, hitRec);
 }
 
 void DamageZombie(GameState* game, int idx, float damage) {
-    if (!game->zombies[idx].active) return;
-    if (game->zombies[idx].type == ENEMY_BRAINROT_GOD && damage != BRAINROT_GOD_PUZZLE_DAMAGE) {
+    if (!game->enemies.list[idx].active) return;
+    if (game->enemies.list[idx].type == ENEMY_BRAINROT_GOD && damage != BRAINROT_GOD_PUZZLE_DAMAGE) {
         return;
     }
-    game->zombies[idx].health -= damage;
-    if (game->zombies[idx].health <= 0.0f) {
-        game->zombies[idx].health = 0.0f;
+    game->enemies.list[idx].health -= damage;
+    if (game->enemies.list[idx].health <= 0.0f) {
+        game->enemies.list[idx].health = 0.0f;
         OnEnemyDeath(game, idx);
     }
 }

@@ -15,9 +15,9 @@
 // --- Gameplay Parameters & Configs ---
 #define GUN_ABILITY_DURATION 6.0f
 #define GUN_SPAWN_TIMER_INITIAL 4.0f
-#define SUPERPOWER_COOLDOWN_MAX 8.0f
+#define SUPERPOWER_COOLDOWN_MAX 6.0f
 #define SUPERPOWER_BLAST_DURATION 0.5f
-#define SUPERPOWER_READY_TIME 7.0f
+#define SUPERPOWER_READY_TIME 5.0f
 #define SUPERPOWER_RADIUS 80.0f
 #define SUPERPOWER_DAMAGE 200.0f
 #define LEVEL1_SPAWN_INTERVAL 2.5f
@@ -53,7 +53,7 @@
 #define SPIDER_BASE_SPEED 55.0f
 #define GHOST_BASE_SPEED 65.0f
 #define RAT_KING_BASE_SPEED 40.0f
-#define DOOM_SCROLLER_BASE_SPEED 0.0f
+#define DOOM_SCROLLER_BASE_SPEED 20.0f
 #define ALGORITHM_BASE_SPEED 45.0f
 #define BRAINROT_GOD_BASE_SPEED 50.0f
 
@@ -203,76 +203,90 @@ typedef struct {
 
 // --- Global Engine Core State ---
 typedef struct {
-    Tilemap map;
-    Player player;
-    GameMode state;
-    Zombie zombies[MAX_ZOMBIES];
-    float zombieTimer;
-    float zombieSpawnTimer;
-    AshTile ashEffects[MAX_ASH_EFFECTS];
-    int gameOverSelection;
-    int menuSelection;
-    int storyPage;
-
-    // --- User Info & Lives ---
-    char playerName[16];
-    int playerNameLength;
+    char name[16];
+    int nameLength;
     int lives;
-
-    // --- Checkpoint Tracking ---
     Vector2 checkpointPosition;
     int checkpointLevel;
     GameMode checkpointState;
     bool checkpointActive;
-
-    // --- Font Handle ---
-    Font gameFont;
-
-    // --- Audio Handles ---
-    Music bgMusic;
-    Sound slashSound;
-    Sound blastSound;
-    Sound hitSound;
-    float hitSoundTimer; // Cooldown timer so damage SFX doesn't trigger every frame
-
-    // --- Intro Video Cutscenes ---
-    Sound cut1Audio;
-    Sound cut2Audio;
-    Sound cutCaveAudio;
-    int cutscenePart;      // 0 for cut1, 1 for cut2, 2 for cutCave
-    float cutsceneTime;    // Track elapsed time during intro
-    bool cutscenesLoaded;
-    Texture2D cut1Textures[152];
-    Texture2D cut2Textures[62];
-    Texture2D cutCaveTextures[240];
-    Texture2D endsceneTextures[12];
-    float startTextTimer;  // Timer for displaying the level start banner overlay
-    int mayorRow;          // Randomly selected row for Mayor spawn
-    int mayorCol;          // Randomly selected col for Mayor spawn
-    Texture2D playerTileset;
-    int playerTilesPerRow;
-    Texture2D spritesTileset;
-    int spritesTilesPerRow;
-    EnemyProjectile enemyProjectiles[MAX_ENEMY_PROJECTILES];
-    PlayerProjectile playerProjectiles[MAX_PLAYER_PROJECTILES];
+    PlayerProjectile projectiles[MAX_PLAYER_PROJECTILES];
     bool hasGun;
     bool gunSpawned;
     int gunRow;
     int gunCol;
     float gunAbilityTimer;
     float gunSpawnTimer;
-    BossStatus bosses[4];
-    MemoryFragment fragments[3];
-    int difficulty;
-    GameMode cutsceneTargetState;
-    int cutsceneTargetLevel;
-    int enemiesKilled;
-    float escapeTimer;
+} PlayerData;
+
+typedef struct {
+    Sound cut1Audio;
+    Sound cut2Audio;
+    Sound cutCaveAudio;
+    int part;
+    float time;
+    bool loaded;
+    Texture2D cut1Textures[152];
+    Texture2D cut2Textures[62];
+    Texture2D cutCaveTextures[240];
+    Texture2D endsceneTextures[12];
+    GameMode targetState;
+    int targetLevel;
+} CutsceneData;
+
+typedef struct {
+    Music bgMusic;
+    Sound slash;
+    Sound blast;
+    Sound hit;
+    float hitTimer;
+} AudioData;
+
+typedef struct {
+    int mayorRow;
+    int mayorCol;
     int potionRow;
     int potionCol;
     bool potionSpawned;
     int bossRow;
     int bossCol;
+    float escapeTimer;
+    float startTextTimer;
+} LevelData;
+
+typedef struct {
+    Zombie list[MAX_ZOMBIES];
+    float timer;
+    float spawnTimer;
+    AshTile ashEffects[MAX_ASH_EFFECTS];
+    EnemyProjectile projectiles[MAX_ENEMY_PROJECTILES];
+    BossStatus status[4];
+    MemoryFragment fragments[3];
+    int killedCount;
+} EnemyData;
+
+typedef struct {
+    int gameOverSelection;
+    int menuSelection;
+    int storyPage;
+    int difficulty;
+} MenuData;
+
+typedef struct {
+    Tilemap map;
+    Player player;
+    GameMode state;
+    PlayerData playerInfo;
+    CutsceneData cutscene;
+    AudioData audio;
+    LevelData levelInfo;
+    EnemyData enemies;
+    MenuData menu;
+    Font gameFont;
+    Texture2D playerTileset;
+    int playerTilesPerRow;
+    Texture2D spritesTileset;
+    int spritesTilesPerRow;
 } GameState;
 
 // --- Global Level Tracker ---

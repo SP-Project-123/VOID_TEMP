@@ -123,7 +123,7 @@ void Player_Draw(const Player* self, Texture2D tileset, int tilesPerRow) {
 }
 
 void SpawnGun(GameState* game) {
-    game->gunSpawned = false;
+    game->playerInfo.gunSpawned = false;
     for (int attempt = 0; attempt < 100; attempt++) {
         int r = GetRandomValue(1, MAP_HEIGHT - 2);
         int c = GetRandomValue(1, MAP_WIDTH - 2);
@@ -131,9 +131,9 @@ void SpawnGun(GameState* game) {
             int pCol = (int)(game->player.position.x / TILE_PX);
             int pRow = (int)(game->player.position.y / TILE_PX);
             if (abs(r - pRow) + abs(c - pCol) >= 3) {
-                game->gunRow = r;
-                game->gunCol = c;
-                game->gunSpawned = true;
+                game->playerInfo.gunRow = r;
+                game->playerInfo.gunCol = c;
+                game->playerInfo.gunSpawned = true;
                 break;
             }
         }

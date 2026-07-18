@@ -74,11 +74,11 @@ void Tilemap_Load(Tilemap* self, const char* csvPath, const char* texturePath) {
     if (currentLevel == 1) {
         // Place a cave in Map 2 at Row 15, Col 29 to allow Level 2 escape
         self->tiles[15][29] = TILE_CAVE_EXIT_L2;
-        // Inject a few obstacles/walls in Level 2 for zombie pathing variety
-        for (int i = 0; i < 6; i++) {
-            self->tiles[8][10 + i] = 28;
-            self->tiles[16][14 + i] = 28;
-        }
+        // // Inject a few obstacles/walls in Level 2 for zombie pathing variety
+        // for (int i = 0; i < 6; i++) {
+        //     self->tiles[8][10 + i] = 28;
+        //     self->tiles[16][14 + i] = 28;
+        // }
     }
 
     self->tileset = LoadTexture(texturePath);

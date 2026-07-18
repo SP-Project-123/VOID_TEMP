@@ -24,7 +24,7 @@ static void UpdateWinState(GameState* game);
 static void DrawGameplayWorld(const GameState* game);
 
 void GameState_LoadCutscenes(GameState* game) {
-    if (game->cutscenesLoaded) return;
+    if (game->cutscene.loaded) return;
     
     BeginDrawing();
     ClearBackground(BLACK);
@@ -34,69 +34,69 @@ void GameState_LoadCutscenes(GameState* game) {
     char path[128];
     for (int i = 0; i < CUT1_FRAMES; i++) {
         sprintf(path, "cutscenes/frames/cut1_%03d.png", i + 1);
-        game->cut1Textures[i] = LoadTexture(path);
+        game->cutscene.cut1Textures[i] = LoadTexture(path);
     }
     for (int i = 0; i < CUT2_FRAMES; i++) {
         sprintf(path, "cutscenes/frames/cut2_%03d.png", i + 1);
-        game->cut2Textures[i] = LoadTexture(path);
+        game->cutscene.cut2Textures[i] = LoadTexture(path);
     }
     for (int i = 0; i < CUT_CAVE_FRAMES; i++) {
         sprintf(path, "cutscenes/frames/cutscene_cave_%03d.png", i + 1);
-        game->cutCaveTextures[i] = LoadTexture(path);
+        game->cutscene.cutCaveTextures[i] = LoadTexture(path);
     }
     for (int i = 0; i < ENDSCENE_FRAMES; i++) {
         sprintf(path, "cutscenes/endscenes/end%d.png", i + 1);
-        game->endsceneTextures[i] = LoadTexture(path);
+        game->cutscene.endsceneTextures[i] = LoadTexture(path);
     }
-    game->cutscenesLoaded = true;
+    game->cutscene.loaded = true;
 }
 
 void GameState_UnloadCutscenes(GameState* game) {
-    if (!game->cutscenesLoaded) return;
+    if (!game->cutscene.loaded) return;
     for (int i = 0; i < CUT1_FRAMES; i++) {
-        if (game->cut1Textures[i].id > 0) {
-            UnloadTexture(game->cut1Textures[i]);
-            game->cut1Textures[i].id = 0;
+        if (game->cutscene.cut1Textures[i].id > 0) {
+            UnloadTexture(game->cutscene.cut1Textures[i]);
+            game->cutscene.cut1Textures[i].id = 0;
         }
     }
     for (int i = 0; i < CUT2_FRAMES; i++) {
-        if (game->cut2Textures[i].id > 0) {
-            UnloadTexture(game->cut2Textures[i]);
-            game->cut2Textures[i].id = 0;
+        if (game->cutscene.cut2Textures[i].id > 0) {
+            UnloadTexture(game->cutscene.cut2Textures[i]);
+            game->cutscene.cut2Textures[i].id = 0;
         }
     }
     for (int i = 0; i < CUT_CAVE_FRAMES; i++) {
-        if (game->cutCaveTextures[i].id > 0) {
-            UnloadTexture(game->cutCaveTextures[i]);
-            game->cutCaveTextures[i].id = 0;
+        if (game->cutscene.cutCaveTextures[i].id > 0) {
+            UnloadTexture(game->cutscene.cutCaveTextures[i]);
+            game->cutscene.cutCaveTextures[i].id = 0;
         }
     }
     for (int i = 0; i < ENDSCENE_FRAMES; i++) {
-        if (game->endsceneTextures[i].id > 0) {
-            UnloadTexture(game->endsceneTextures[i]);
-            game->endsceneTextures[i].id = 0;
+        if (game->cutscene.endsceneTextures[i].id > 0) {
+            UnloadTexture(game->cutscene.endsceneTextures[i]);
+            game->cutscene.endsceneTextures[i].id = 0;
         }
     }
-    game->cutscenesLoaded = false;
+    game->cutscene.loaded = false;
 }
 
 void GameState_Init(GameState* self) {
-    self->bgMusic = LoadMusicStream("resources/bgm.mp3");
+    self->audio.bgMusic = LoadMusicStream("resources/bgm.mp3");
     if (FileExists("resources/slash.ogg")) {
-        self->slashSound = LoadSound("resources/slash.ogg");
+        self->audio.slash = LoadSound("resources/slash.ogg");
     } else {
-        self->slashSound = LoadSound("resources/slash.wav");
+        self->audio.slash = LoadSound("resources/slash.wav");
     }
-    self->blastSound = LoadSound("resources/blast.wav");
-    self->hitSound = LoadSound("resources/hit.wav");
-    self->hitSoundTimer = 0.0f;
-    self->cut1Audio = LoadSound("cutscenes/cut1.wav");
-    self->cut2Audio = LoadSound("cutscenes/cut2.wav");
-    self->cutCaveAudio = LoadSound("cutscenes/cutscene_cave.wav");
-    self->cutscenePart = 0;
-    self->cutsceneTime = 0.0f;
-    self->cutscenesLoaded = false;
-    self->startTextTimer = 0.0f;
+    self->audio.blast = LoadSound("resources/blast.wav");
+    self->audio.hit = LoadSound("resources/hit.wav");
+    self->audio.hitTimer = 0.0f;
+    self->cutscene.cut1Audio = LoadSound("cutscenes/cut1.wav");
+    self->cutscene.cut2Audio = LoadSound("cutscenes/cut2.wav");
+    self->cutscene.cutCaveAudio = LoadSound("cutscenes/cutscene_cave.wav");
+    self->cutscene.part = 0;
+    self->cutscene.time = 0.0f;
+    self->cutscene.loaded = false;
+    self->levelInfo.startTextTimer = 0.0f;
 
     self->playerTileset = LoadTexture("tilemap_packed.png");
     self->playerTilesPerRow = self->playerTileset.width / TILE_SIZE;
@@ -119,39 +119,39 @@ void GameState_Init(GameState* self) {
     }
 
     self->map.tileset.id = 0;
-    self->difficulty = 1;
-    self->playerName[0] = '\0';
-    self->playerNameLength = 0;
-    self->lives = PLAYER_INITIAL_LIVES;
-    self->checkpointActive = false;
-    self->checkpointPosition = (Vector2){ 0, 0 };
-    self->checkpointLevel = 0;
-    self->checkpointState = STATE_EXPLORING;
-    self->gameOverSelection = 0;
-    self->menuSelection = 0;
-    self->storyPage = 0;
-    self->cutsceneTargetState = (GameMode)-1;
-    self->cutsceneTargetLevel = 0;
+    self->menu.difficulty = 1;
+    self->playerInfo.name[0] = '\0';
+    self->playerInfo.nameLength = 0;
+    self->playerInfo.lives = PLAYER_INITIAL_LIVES;
+    self->playerInfo.checkpointActive = false;
+    self->playerInfo.checkpointPosition = (Vector2){ 0, 0 };
+    self->playerInfo.checkpointLevel = 0;
+    self->playerInfo.checkpointState = STATE_EXPLORING;
+    self->menu.gameOverSelection = 0;
+    self->menu.menuSelection = 0;
+    self->menu.storyPage = 0;
+    self->cutscene.targetState = (GameMode)-1;
+    self->cutscene.targetLevel = 0;
     for (int i = 0; i < 4; i++) {
-        self->bosses[i].spawned = false;
-        self->bosses[i].defeated = false;
-        self->bosses[i].showLog = false;
-        self->bosses[i].tileId = 0;
+        self->enemies.status[i].spawned = false;
+        self->enemies.status[i].defeated = false;
+        self->enemies.status[i].showLog = false;
+        self->enemies.status[i].tileId = 0;
     }
-    self->bosses[BOSS_RAT_KING].tileId = 23;
-    self->bosses[BOSS_DOOM_SCROLLER].tileId = 306;
-    self->bosses[BOSS_ALGORITHM].tileId = 308;
-    self->bosses[BOSS_BRAINROT_GOD].tileId = 27;
+    self->enemies.status[BOSS_RAT_KING].tileId = 23;
+    self->enemies.status[BOSS_DOOM_SCROLLER].tileId = 306;
+    self->enemies.status[BOSS_ALGORITHM].tileId = 308;
+    self->enemies.status[BOSS_BRAINROT_GOD].tileId = 27;
     for (int i = 0; i < 3; i++) {
-        self->fragments[i].activated = false;
-        self->fragments[i].position = (Vector2){0, 0};
-        self->fragments[i].name = "";
+        self->enemies.fragments[i].activated = false;
+        self->enemies.fragments[i].position = (Vector2){0, 0};
+        self->enemies.fragments[i].name = "";
     }
 
     LoadLevel(self, 0);
     self->state = STATE_MENU;
 
-    PlayMusicStream(self->bgMusic);
+    PlayMusicStream(self->audio.bgMusic);
 }
 
 const LevelConfig g_levelConfigs[4] = {
@@ -204,7 +204,7 @@ void LoadLevel(GameState* game, int levelIndex) {
 
     // Set up Mayor on level 0
     if (levelIndex == 0) {
-        game->enemiesKilled = 0;
+        game->enemies.killedCount = 0;
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int tid = game->map.tiles[y][x];
@@ -235,55 +235,55 @@ void LoadLevel(GameState* game, int levelIndex) {
 
         if (candidateCount > 0) {
             int idx = GetRandomValue(0, candidateCount - 1);
-            game->mayorRow = candidates[idx].r;
-            game->mayorCol = candidates[idx].c;
+            game->levelInfo.mayorRow = candidates[idx].r;
+            game->levelInfo.mayorCol = candidates[idx].c;
         } else {
-            game->mayorRow = 10;
-            game->mayorCol = 10;
+            game->levelInfo.mayorRow = 10;
+            game->levelInfo.mayorCol = 10;
         }
-        game->map.tiles[game->mayorRow][game->mayorCol] = 283;
+        game->map.tiles[game->levelInfo.mayorRow][game->levelInfo.mayorCol] = 283;
     }
 
-    game->zombieTimer = 0.0f;
-    game->zombieSpawnTimer = 0.0f;
-    for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
-    for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerProjectiles[p].active = false;
-    for (int e = 0; e < MAX_ENEMY_PROJECTILES; e++) game->enemyProjectiles[e].active = false;
+    game->enemies.timer = 0.0f;
+    game->enemies.spawnTimer = 0.0f;
+    for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
+    for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) game->playerInfo.projectiles[p].active = false;
+    for (int e = 0; e < MAX_ENEMY_PROJECTILES; e++) game->enemies.projectiles[e].active = false;
 
-    game->bossRow = -1;
-    game->bossCol = -1;
+    game->levelInfo.bossRow = -1;
+    game->levelInfo.bossCol = -1;
     if (levelIndex == 1) {
-        game->bossRow = 10;
-        game->bossCol = 10;
+        game->levelInfo.bossRow = 10;
+        game->levelInfo.bossCol = 10;
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
                 if (game->map.tiles[y][x] == 23) {
-                    game->bossRow = y;
-                    game->bossCol = x;
+                    game->levelInfo.bossRow = y;
+                    game->levelInfo.bossCol = x;
                     game->map.tiles[y][x] = 17; // Replace static boss tile with walkable floor
                 }
             }
         }
         SpawnZombie(game);
         SpawnZombie(game);
-        SpawnEnemy(game, ENEMY_RAT_KING, game->bossRow, game->bossCol);
+        SpawnEnemy(game, ENEMY_RAT_KING, game->levelInfo.bossRow, game->levelInfo.bossCol);
     } else if (levelIndex == 2) {
-        game->bossRow = 16;
-        game->bossCol = 20;
-        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, game->bossRow, game->bossCol);
+        game->levelInfo.bossRow = 16;
+        game->levelInfo.bossCol = 20;
+        SpawnEnemy(game, ENEMY_DOOM_SCROLLER, game->levelInfo.bossRow, game->levelInfo.bossCol);
     } else if (levelIndex == 3) {
         for (int s = 0; s < 6; s++) SpawnZombie(game);
     }
 
-    game->hasGun = false;
-    game->gunSpawned = false;
-    game->gunSpawnTimer = 4.0f;
-    game->gunAbilityTimer = 0.0f;
-    game->startTextTimer = 4.0f;
-    game->escapeTimer = 120.0f;
+    game->playerInfo.hasGun = false;
+    game->playerInfo.gunSpawned = false;
+    game->playerInfo.gunSpawnTimer = 4.0f;
+    game->playerInfo.gunAbilityTimer = 0.0f;
+    game->levelInfo.startTextTimer = 4.0f;
+    game->levelInfo.escapeTimer = 120.0f;
 
     // Spawn potion on each map
-    game->potionSpawned = false;
+    game->levelInfo.potionSpawned = false;
     int potionRow = -1, potionCol = -1;
     for (int attempt = 0; attempt < 200; attempt++) {
         int r = GetRandomValue(2, MAP_HEIGHT - 3);
@@ -293,56 +293,56 @@ void LoadLevel(GameState* game, int levelIndex) {
             if (dist >= 5) {
                 potionRow = r;
                 potionCol = c;
-                game->potionSpawned = true;
+                game->levelInfo.potionSpawned = true;
                 break;
             }
         }
     }
-    if (!game->potionSpawned) {
-        game->potionRow = 8;
-        game->potionCol = 8;
-        game->potionSpawned = true;
+    if (!game->levelInfo.potionSpawned) {
+        game->levelInfo.potionRow = 8;
+        game->levelInfo.potionCol = 8;
+        game->levelInfo.potionSpawned = true;
     } else {
-        game->potionRow = potionRow;
-        game->potionCol = potionCol;
+        game->levelInfo.potionRow = potionRow;
+        game->levelInfo.potionCol = potionCol;
     }
 
-    game->checkpointPosition = game->player.position;
-    game->checkpointLevel = currentLevel;
-    game->checkpointState = game->state;
-    game->checkpointActive = true;
+    game->playerInfo.checkpointPosition = game->player.position;
+    game->playerInfo.checkpointLevel = currentLevel;
+    game->playerInfo.checkpointState = game->state;
+    game->playerInfo.checkpointActive = true;
 }
 
 void GameState_TransitionFromCutscene(GameState* game) {
-    if (game->cutsceneTargetState != (GameMode)-1) {
-        if (game->cutsceneTargetState == STATE_WIN) {
+    if (game->cutscene.targetState != (GameMode)-1) {
+        if (game->cutscene.targetState == STATE_WIN) {
             game->state = STATE_WIN;
         } else {
-            LoadLevel(game, game->cutsceneTargetLevel);
-            game->state = game->cutsceneTargetState;
+            LoadLevel(game, game->cutscene.targetLevel);
+            game->state = game->cutscene.targetState;
         }
-        game->cutsceneTargetState = (GameMode)-1;
+        game->cutscene.targetState = (GameMode)-1;
     } else {
         LoadLevel(game, 0);
         game->state = STATE_EXPLORING;
-        game->lives = PLAYER_INITIAL_LIVES;
+        game->playerInfo.lives = PLAYER_INITIAL_LIVES;
     }
-    PlayMusicStream(game->bgMusic);
+    PlayMusicStream(game->audio.bgMusic);
 }
 
 // --- State Machine Update Routine ---
 static void UpdatePlayerWeapon(GameState* game, float dt) {
     if (IsKeyPressed(KEY_SPACE) && game->player.hasWeapon && !game->player.isAttacking) {
         if (game->player.lightAttackCooldown <= 0.0f) {
-            PlaySound(game->slashSound);
+            PlaySound(game->audio.slash);
             game->player.isAttacking = true;
             game->player.attackTimer = 0.15f;
             game->player.lightAttackCooldown = 0.33f;
 
-            if (game->hasGun) {
+            if (game->playerInfo.hasGun) {
                 int projSlot = -1;
                 for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
-                    if (!game->playerProjectiles[p].active) {
+                    if (!game->playerInfo.projectiles[p].active) {
                         projSlot = p;
                         break;
                     }
@@ -357,9 +357,9 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
                     else if (game->player.direction == DIR_LEFT) vel.x = -pSpeed;
                     else if (game->player.direction == DIR_RIGHT) vel.x = pSpeed;
 
-                    game->playerProjectiles[projSlot].position = (Vector2){ startX, startY };
-                    game->playerProjectiles[projSlot].velocity = vel;
-                    game->playerProjectiles[projSlot].active = true;
+                    game->playerInfo.projectiles[projSlot].position = (Vector2){ startX, startY };
+                    game->playerInfo.projectiles[projSlot].velocity = vel;
+                    game->playerInfo.projectiles[projSlot].active = true;
                 }
             }
 
@@ -374,11 +374,11 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
             Rectangle attackRec = { rx, ry, rw, rh };
 
             for (int i = 0; i < MAX_ZOMBIES; i++) {
-                if (game->zombies[i].active) {
-                    EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+                if (game->enemies.list[i].active) {
+                    EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
                     float zSize = TILE_PX * props.scale;
                     float offset = (props.scale - 1.0f) / 2.0f;
-                    Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                    Rectangle zRec = { game->enemies.list[i].position.x - TILE_PX * offset, game->enemies.list[i].position.y - TILE_PX * offset, zSize, zSize };
                     if (CheckCollisionRecs(attackRec, zRec)) {
                         DamageZombie(game, i, PLAYER_SWORD_DAMAGE);
                     }
@@ -387,59 +387,59 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
         }
     }
 
-    if (game->gunSpawned) {
-        float gx = game->gunCol * TILE_PX + TILE_PX / 2.0f;
-        float gy = game->gunRow * TILE_PX + TILE_PX / 2.0f;
+    if (game->playerInfo.gunSpawned) {
+        float gx = game->playerInfo.gunCol * TILE_PX + TILE_PX / 2.0f;
+        float gy = game->playerInfo.gunRow * TILE_PX + TILE_PX / 2.0f;
         float px = game->player.position.x + TILE_PX / 2.0f;
         float py = game->player.position.y + TILE_PX / 2.0f;
         float dx = px - gx;
         float dy = py - gy;
         if (sqrtf(dx*dx + dy*dy) < 32.0f) {
-            game->gunSpawned = false;
-            game->hasGun = true;
-            game->gunAbilityTimer = 4.0f;
-            PlaySound(game->blastSound);
+            game->playerInfo.gunSpawned = false;
+            game->playerInfo.hasGun = true;
+            game->playerInfo.gunAbilityTimer = 4.0f;
+            PlaySound(game->audio.blast);
         }
     }
 
-    if (game->hasGun) {
-        game->gunAbilityTimer -= dt;
-        if (game->gunAbilityTimer <= 0.0f) game->hasGun = false;
+    if (game->playerInfo.hasGun) {
+        game->playerInfo.gunAbilityTimer -= dt;
+        if (game->playerInfo.gunAbilityTimer <= 0.0f) game->playerInfo.hasGun = false;
     }
 
-    if (!game->gunSpawned && !game->hasGun && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
-        game->gunSpawnTimer -= dt;
-        if (game->gunSpawnTimer <= 0.0f) {
+    if (!game->playerInfo.gunSpawned && !game->playerInfo.hasGun && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+        game->playerInfo.gunSpawnTimer -= dt;
+        if (game->playerInfo.gunSpawnTimer <= 0.0f) {
             SpawnGun(game);
-            game->gunSpawnTimer = 4.0f;
+            game->playerInfo.gunSpawnTimer = 4.0f;
         }
     }
 
-    if (game->potionSpawned) {
-        float gx = game->potionCol * TILE_PX + TILE_PX / 2.0f;
-        float gy = game->potionRow * TILE_PX + TILE_PX / 2.0f;
+    if (game->levelInfo.potionSpawned) {
+        float gx = game->levelInfo.potionCol * TILE_PX + TILE_PX / 2.0f;
+        float gy = game->levelInfo.potionRow * TILE_PX + TILE_PX / 2.0f;
         float px = game->player.position.x + TILE_PX / 2.0f;
         float py = game->player.position.y + TILE_PX / 2.0f;
         float dx = px - gx;
         float dy = py - gy;
         if (sqrtf(dx*dx + dy*dy) < 32.0f) {
-            game->potionSpawned = false;
+            game->levelInfo.potionSpawned = false;
             game->player.health = game->player.maxHealth;
-            PlaySound(game->blastSound);
+            PlaySound(game->audio.blast);
         }
     }
 }
 
 static void UpdatePlayerProjectiles(GameState* game, float dt) {
     for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
-        if (!game->playerProjectiles[p].active) continue;
+        if (!game->playerInfo.projectiles[p].active) continue;
 
-        game->playerProjectiles[p].position.x += game->playerProjectiles[p].velocity.x * dt;
-        game->playerProjectiles[p].position.y += game->playerProjectiles[p].velocity.y * dt;
+        game->playerInfo.projectiles[p].position.x += game->playerInfo.projectiles[p].velocity.x * dt;
+        game->playerInfo.projectiles[p].position.y += game->playerInfo.projectiles[p].velocity.y * dt;
 
-        Vector2 pos = game->playerProjectiles[p].position;
+        Vector2 pos = game->playerInfo.projectiles[p].position;
         if (pos.x < 0 || pos.x > MAP_WIDTH * TILE_PX || pos.y < 0 || pos.y > MAP_HEIGHT * TILE_PX) {
-            game->playerProjectiles[p].active = false;
+            game->playerInfo.projectiles[p].active = false;
             continue;
         }
 
@@ -448,15 +448,15 @@ static void UpdatePlayerProjectiles(GameState* game, float dt) {
         if (cellX >= 0 && cellX < MAP_WIDTH && cellY >= 0 && cellY < MAP_HEIGHT) {
             int type = GetTileType(game->map.tiles[cellY][cellX]);
             if (type == TILE_WALL) {
-                game->playerProjectiles[p].active = false;
+                game->playerInfo.projectiles[p].active = false;
                 continue;
             }
         }
 
         for (int i = 0; i < MAX_ZOMBIES; i++) {
             if (IsZombieHit(game, i, pos, 16.0f)) {
-                game->playerProjectiles[p].active = false;
-                PlaySound(game->hitSound);
+                game->playerInfo.projectiles[p].active = false;
+                PlaySound(game->audio.hit);
                 DamageZombie(game, i, PLAYER_PROJECTILE_DAMAGE);
                 break;
             }
@@ -466,80 +466,80 @@ static void UpdatePlayerProjectiles(GameState* game, float dt) {
 
 static void UpdateMenuState(GameState* game) {
     if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
-        game->menuSelection--;
-        if (game->menuSelection < 0) game->menuSelection = 4;
+        game->menu.menuSelection--;
+        if (game->menu.menuSelection < 0) game->menu.menuSelection = 4;
     }
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
-        game->menuSelection++;
-        if (game->menuSelection > 4) game->menuSelection = 0;
+        game->menu.menuSelection++;
+        if (game->menu.menuSelection > 4) game->menu.menuSelection = 0;
     }
-    if (game->menuSelection == 1) {
+    if (game->menu.menuSelection == 1) {
         if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
-            game->difficulty = (game->difficulty + 1) % 3;
+            game->menu.difficulty = (game->menu.difficulty + 1) % 3;
         } else if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
-            game->difficulty = (game->difficulty + 2) % 3;
+            game->menu.difficulty = (game->menu.difficulty + 2) % 3;
         }
     } else if (IsKeyPressed(KEY_ENTER)) {
-        if (game->menuSelection == 0) game->state = STATE_NAME_PROMPT;
-        else if (game->menuSelection == 2) game->state = STATE_HISTORY;
-        else if (game->menuSelection == 3) game->state = STATE_TEAM;
-        else if (game->menuSelection == 4) CloseWindow();
+        if (game->menu.menuSelection == 0) game->state = STATE_NAME_PROMPT;
+        else if (game->menu.menuSelection == 2) game->state = STATE_HISTORY;
+        else if (game->menu.menuSelection == 3) game->state = STATE_TEAM;
+        else if (game->menu.menuSelection == 4) CloseWindow();
     }
 }
 
 static void UpdateNamePromptState(GameState* game) {
     int key = GetCharPressed();
     while (key > 0) {
-        if ((key >= 32) && (key <= 125) && (game->playerNameLength < 15)) {
-            game->playerName[game->playerNameLength] = (char)key;
-            game->playerName[game->playerNameLength + 1] = '\0';
-            game->playerNameLength++;
+        if ((key >= 32) && (key <= 125) && (game->playerInfo.nameLength < 15)) {
+            game->playerInfo.name[game->playerInfo.nameLength] = (char)key;
+            game->playerInfo.name[game->playerInfo.nameLength + 1] = '\0';
+            game->playerInfo.nameLength++;
         }
         key = GetCharPressed();
     }
     if (IsKeyPressed(KEY_BACKSPACE)) {
-        game->playerNameLength--;
-        if (game->playerNameLength < 0) game->playerNameLength = 0;
-        game->playerName[game->playerNameLength] = '\0';
+        game->playerInfo.nameLength--;
+        if (game->playerInfo.nameLength < 0) game->playerInfo.nameLength = 0;
+        game->playerInfo.name[game->playerInfo.nameLength] = '\0';
     }
-    if (IsKeyPressed(KEY_ENTER) && game->playerNameLength > 0) {
-        StopMusicStream(game->bgMusic);
+    if (IsKeyPressed(KEY_ENTER) && game->playerInfo.nameLength > 0) {
+        StopMusicStream(game->audio.bgMusic);
         GameState_LoadCutscenes(game);
         game->state = STATE_INTRO;
-        game->cutscenePart = 0;
-        game->cutsceneTime = 0.0f;
-        PlaySound(game->cut1Audio);
+        game->cutscene.part = 0;
+        game->cutscene.time = 0.0f;
+        PlaySound(game->cutscene.cut1Audio);
     }
     if (IsKeyPressed(KEY_ESCAPE)) game->state = STATE_MENU;
 }
 
 static void UpdateIntroState(GameState* game, float dt) {
-    game->cutsceneTime += dt;
+    game->cutscene.time += dt;
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ESCAPE)) {
-        StopSound(game->cut1Audio);
-        StopSound(game->cut2Audio);
-        StopSound(game->cutCaveAudio);
+        StopSound(game->cutscene.cut1Audio);
+        StopSound(game->cutscene.cut2Audio);
+        StopSound(game->cutscene.cutCaveAudio);
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
         return;
     }
-    if (game->cutscenePart == 0 && game->cutsceneTime >= 10.0f) {
-        game->cutscenePart = 1;
-        game->cutsceneTime = 0.0f;
-        StopSound(game->cut1Audio);
-        PlaySound(game->cut2Audio);
+    if (game->cutscene.part == 0 && game->cutscene.time >= 10.0f) {
+        game->cutscene.part = 1;
+        game->cutscene.time = 0.0f;
+        StopSound(game->cutscene.cut1Audio);
+        PlaySound(game->cutscene.cut2Audio);
     }
-    if (game->cutscenePart == 1 && game->cutsceneTime >= 4.0f) {
-        StopSound(game->cut2Audio);
+    if (game->cutscene.part == 1 && game->cutscene.time >= 4.0f) {
+        StopSound(game->cutscene.cut2Audio);
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
-    if (game->cutscenePart == 2 && game->cutsceneTime >= 10.0f) {
-        StopSound(game->cutCaveAudio);
+    if (game->cutscene.part == 2 && game->cutscene.time >= 10.0f) {
+        StopSound(game->cutscene.cutCaveAudio);
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
-    if (game->cutscenePart == 3 && game->cutsceneTime >= 36.0f) {
+    if (game->cutscene.part == 3 && game->cutscene.time >= 36.0f) {
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
@@ -560,32 +560,32 @@ static void UpdateExploringState(GameState* game, int oldRow, int oldCol, float 
 static void UpdateCutsceneState(GameState* game) {
     if (IsKeyPressed(KEY_ENTER)) {
         game->state = STATE_SURVIVAL;
-        game->zombieTimer = 0.0f;
-        game->zombieSpawnTimer = 0.0f;
+        game->enemies.timer = 0.0f;
+        game->enemies.spawnTimer = 0.0f;
         
         if (currentLevel == 0) {
             // Clean up Mayor tile from the old spawn position
-            game->map.tiles[game->mayorRow][game->mayorCol] = 20;
+            game->map.tiles[game->levelInfo.mayorRow][game->levelInfo.mayorCol] = 20;
 
             // Spawn Cave Exit at hardcoded position (2, 2)
-            game->mayorRow = 2;
-            game->mayorCol = 2;
+            game->levelInfo.mayorRow = 2;
+            game->levelInfo.mayorCol = 2;
             game->map.tiles[2][2] = 236;
             game->map.tiles[2][3] = 237;
 
             game->player.position.x = 25.0f * TILE_PX;
             game->player.position.y = 23.0f * TILE_PX;
-            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
             for (int s = 0; s < 6; s++) SpawnZombie(game);
         } else {
-            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
             for (int s = 0; s < 6; s++) SpawnZombie(game);
         }
 
-        game->checkpointPosition = game->player.position;
-        game->checkpointLevel = currentLevel;
-        game->checkpointState = STATE_SURVIVAL;
-        game->checkpointActive = true;
+        game->playerInfo.checkpointPosition = game->player.position;
+        game->playerInfo.checkpointLevel = currentLevel;
+        game->playerInfo.checkpointState = STATE_SURVIVAL;
+        game->playerInfo.checkpointActive = true;
     }
 }
 
@@ -600,7 +600,7 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
             if (game->map.tiles[3][21] == 59) {
                 game->map.tiles[3][21] = 17;
                 game->map.tiles[3][22] = 17;
-                PlaySound(game->blastSound);
+                PlaySound(game->audio.blast);
             }
         }
         
@@ -610,19 +610,19 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
                 game->map.tiles[21][4] = 17;
                 game->map.tiles[22][3] = 17;
                 game->map.tiles[22][4] = 17;
-                PlaySound(game->blastSound);
+                PlaySound(game->audio.blast);
             }
         }
     }
 
     bool canSpawn = true;
-    if (currentLevel == 1 && game->bosses[BOSS_RAT_KING].defeated) canSpawn = false;
-    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
+    if (currentLevel == 1 && game->enemies.status[BOSS_RAT_KING].defeated) canSpawn = false;
+    if (currentLevel == 2 && game->enemies.status[BOSS_BRAINROT_GOD].defeated) canSpawn = false;
 
-    game->zombieSpawnTimer += dt;
+    game->enemies.spawnTimer += dt;
     float spawnCooldown = (currentLevel == 0) ? LEVEL1_SPAWN_INTERVAL : (currentLevel == 1) ? LEVEL2_SPAWN_INTERVAL : LEVEL3_SPAWN_INTERVAL;
-    if (game->zombieSpawnTimer >= spawnCooldown) {
-        game->zombieSpawnTimer = 0.0f;
+    if (game->enemies.spawnTimer >= spawnCooldown) {
+        game->enemies.spawnTimer = 0.0f;
         if (canSpawn) {
             int spawnCount = 2 + currentLevel * 2;
             for (int s = 0; s < spawnCount; s++) {
@@ -636,30 +636,30 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
     if (pRow >= 0 && pRow < MAP_HEIGHT && pCol >= 0 && pCol < MAP_WIDTH) {
         int tileID = game->map.tiles[pRow][pCol];
         if (GetTileType(tileID) == TILE_CAVE) {
-            for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+            for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
 
             if (currentLevel == 0) {
-                GameHistory_SaveEntry(game->playerName, 1, false);
+                GameHistory_SaveEntry(game->playerInfo.name, 1, false);
                 
                 GameState_LoadCutscenes(game);
                 game->state = STATE_INTRO;
-                game->cutscenePart = 2;
-                game->cutsceneTime = 0.0f;
-                PlaySound(game->cutCaveAudio);
+                game->cutscene.part = 2;
+                game->cutscene.time = 0.0f;
+                PlaySound(game->cutscene.cutCaveAudio);
                 
-                game->cutsceneTargetLevel = 1;
-                game->cutsceneTargetState = STATE_SURVIVAL;
+                game->cutscene.targetLevel = 1;
+                game->cutscene.targetState = STATE_SURVIVAL;
             } else if (currentLevel == 1) {
-                GameHistory_SaveEntry(game->playerName, 2, false);
+                GameHistory_SaveEntry(game->playerInfo.name, 2, false);
                 LoadLevel(game, 2);
             } else if (currentLevel == 3) {
-                GameHistory_SaveEntry(game->playerName, 4, true);
+                GameHistory_SaveEntry(game->playerInfo.name, 4, true);
                 GameState_LoadCutscenes(game);
                 game->state = STATE_INTRO;
-                game->cutscenePart = 3;
-                game->cutsceneTime = 0.0f;
-                game->cutsceneTargetLevel = 3;
-                game->cutsceneTargetState = STATE_WIN;
+                game->cutscene.part = 3;
+                game->cutscene.time = 0.0f;
+                game->cutscene.targetLevel = 3;
+                game->cutscene.targetState = STATE_WIN;
             }
         }
     }
@@ -673,18 +673,18 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
     else game->player.isAimingSuperpower = false;
 
     if (game->player.radiusPowerupReady && IsKeyReleased(KEY_F) && game->player.radiusCooldown <= 0.0f) {
-        PlaySound(game->blastSound);
+        PlaySound(game->audio.blast);
         game->player.radiusPowerupReady = false;
         game->player.radiusCooldown = SUPERPOWER_COOLDOWN_MAX;
         game->player.radiusBlastTimer = SUPERPOWER_BLAST_DURATION;
         
         Vector2 blastPos = { pCol * TILE_PX + TILE_PX/2.0f, pRow * TILE_PX + TILE_PX/2.0f };
         for (int i = 0; i < MAX_ZOMBIES; i++) {
-            if (game->zombies[i].active) {
-                EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            if (game->enemies.list[i].active) {
+                EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
                 float zSize = TILE_PX * props.scale;
                 float offset = (props.scale - 1.0f) / 2.0f;
-                Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+                Rectangle zRec = { game->enemies.list[i].position.x - TILE_PX * offset, game->enemies.list[i].position.y - TILE_PX * offset, zSize, zSize };
                 if (CheckCollisionCircleRec(blastPos, SUPERPOWER_RADIUS, zRec)) {
                     DamageZombie(game, i, SUPERPOWER_DAMAGE);
                 }
@@ -692,17 +692,17 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
         }
     }
 
-    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
+    if (currentLevel == 2 && game->enemies.status[BOSS_BRAINROT_GOD].spawned && !game->enemies.status[BOSS_BRAINROT_GOD].defeated) {
         Vector2 pPos = { game->player.position.x + TILE_PX/2.0f, game->player.position.y + TILE_PX/2.0f };
         for (int i = 0; i < 3; i++) {
-            if (!game->fragments[i].activated) {
-                float dx = pPos.x - game->fragments[i].position.x;
-                float dy = pPos.y - game->fragments[i].position.y;
+            if (!game->enemies.fragments[i].activated) {
+                float dx = pPos.x - game->enemies.fragments[i].position.x;
+                float dy = pPos.y - game->enemies.fragments[i].position.y;
                 if (sqrtf(dx*dx + dy*dy) < 24.0f) {
-                    game->fragments[i].activated = true;
-                    PlaySound(game->blastSound);
+                    game->enemies.fragments[i].activated = true;
+                    PlaySound(game->audio.blast);
                     for (int z = 0; z < MAX_ZOMBIES; z++) {
-                        if (game->zombies[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, BRAINROT_GOD_PUZZLE_DAMAGE);
+                        if (game->enemies.list[z].type == ENEMY_BRAINROT_GOD) DamageZombie(game, z, BRAINROT_GOD_PUZZLE_DAMAGE);
                     }
                 }
             }
@@ -710,16 +710,16 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
     }
     Rectangle pRec = { game->player.position.x + 2.0f, game->player.position.y + 2.0f, 28.0f, 28.0f };
     for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (game->zombies[i].active) {
-            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+        if (game->enemies.list[i].active) {
+            EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
             float zSize = TILE_PX * props.scale;
             float offset = (props.scale - 1.0f) / 2.0f;
-            Rectangle zRec = { game->zombies[i].position.x - TILE_PX * offset, game->zombies[i].position.y - TILE_PX * offset, zSize, zSize };
+            Rectangle zRec = { game->enemies.list[i].position.x - TILE_PX * offset, game->enemies.list[i].position.y - TILE_PX * offset, zSize, zSize };
             if (CheckCollisionRecs(pRec, zRec)) {
                 game->player.health -= ZOMBIE_DAMAGE_RATE * dt;
-                if (game->hitSoundTimer <= 0.0f) {
-                    PlaySound(game->hitSound);
-                    game->hitSoundTimer = 0.5f;
+                if (game->audio.hitTimer <= 0.0f) {
+                    PlaySound(game->audio.hit);
+                    game->audio.hitTimer = 0.5f;
                 }
             }
         }
@@ -727,53 +727,53 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
 
     if (game->player.health <= 0.0f) {
         game->player.health = 0.0f;
-        if (game->checkpointActive && game->lives > 1) {
-            game->lives--;
+        if (game->playerInfo.checkpointActive && game->playerInfo.lives > 1) {
+            game->playerInfo.lives--;
             game->player.health = PLAYER_INITIAL_HEALTH;
             
-            if (currentLevel != game->checkpointLevel) {
-                LoadLevel(game, game->checkpointLevel);
+            if (currentLevel != game->playerInfo.checkpointLevel) {
+                LoadLevel(game, game->playerInfo.checkpointLevel);
             } else {
-                game->player.position = game->checkpointPosition;
+                game->player.position = game->playerInfo.checkpointPosition;
                 game->player.gridX = (int)(game->player.position.x / TILE_PX);
                 game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                game->state = game->checkpointState;
+                game->state = game->playerInfo.checkpointState;
 
                 // Reset minor zombies, but preserve and reposition active bosses
                 for (int z = 0; z < MAX_ZOMBIES; z++) {
-                    if (game->zombies[z].active) {
-                        BossId bid = GetBossId(game->zombies[z].type);
+                    if (game->enemies.list[z].active) {
+                        BossId bid = GetBossId(game->enemies.list[z].type);
                         if (bid != (BossId)-1) {
-                            if (game->bossRow != -1 && game->bossCol != -1) {
-                                game->zombies[z].position = (Vector2){ game->bossCol * TILE_PX, game->bossRow * TILE_PX };
-                                game->zombies[z].row = game->bossRow;
-                                game->zombies[z].col = game->bossCol;
+                            if (game->levelInfo.bossRow != -1 && game->levelInfo.bossCol != -1) {
+                                game->enemies.list[z].position = (Vector2){ game->levelInfo.bossCol * TILE_PX, game->levelInfo.bossRow * TILE_PX };
+                                game->enemies.list[z].row = game->levelInfo.bossRow;
+                                game->enemies.list[z].col = game->levelInfo.bossCol;
                             }
                         } else {
-                            game->zombies[z].active = false;
+                            game->enemies.list[z].active = false;
                         }
                     }
                 }
 
-                if (currentLevel == 0 && game->checkpointState == STATE_SURVIVAL) {
+                if (currentLevel == 0 && game->playerInfo.checkpointState == STATE_SURVIVAL) {
                     for (int s = 0; s < 6; s++) SpawnZombie(game);
                 }
             }
         } else {
-            GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
+            GameHistory_SaveEntry(game->playerInfo.name, currentLevel + 1, false);
             game->state = STATE_GAMEOVER;
         }
     }
 }
 
 static void UpdateGameOverState(GameState* game) {
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) game->gameOverSelection = 0;
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) game->gameOverSelection = 1;
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) game->menu.gameOverSelection = 0;
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) game->menu.gameOverSelection = 1;
     if (IsKeyPressed(KEY_ENTER)) {
-        if (game->gameOverSelection == 0) {
+        if (game->menu.gameOverSelection == 0) {
             int levelToLoad = currentLevel;
             LoadLevel(game, levelToLoad);
-            game->lives = PLAYER_INITIAL_LIVES;
+            game->playerInfo.lives = PLAYER_INITIAL_LIVES;
         } else {
             game->state = STATE_MENU;
         }
@@ -789,52 +789,52 @@ static void UpdateWinState(GameState* game) {
 
 void UpdateGame(GameState* game, float dt) {
     for (int i = 0; i < 4; i++) {
-        if (game->bosses[i].showLog) {
-            if (IsKeyPressed(KEY_ENTER)) game->bosses[i].showLog = false;
+        if (game->enemies.status[i].showLog) {
+            if (IsKeyPressed(KEY_ENTER)) game->enemies.status[i].showLog = false;
             return;
         }
     }
 
-    UpdateMusicStream(game->bgMusic);
+    UpdateMusicStream(game->audio.bgMusic);
 
-    if (game->hitSoundTimer > 0.0f) game->hitSoundTimer -= dt;
-    if (game->startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
-        game->startTextTimer -= dt;
+    if (game->audio.hitTimer > 0.0f) game->audio.hitTimer -= dt;
+    if (game->levelInfo.startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+        game->levelInfo.startTextTimer -= dt;
     }
 
     if (IsKeyPressed(KEY_M) && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
-        for (int i = 0; i < MAX_ZOMBIES; i++) game->zombies[i].active = false;
+        for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
         if (currentLevel == 0) {
-            GameHistory_SaveEntry(game->playerName, 1, false);
+            GameHistory_SaveEntry(game->playerInfo.name, 1, false);
             GameState_LoadCutscenes(game);
             game->state = STATE_INTRO;
-            game->cutscenePart = 2;
-            game->cutsceneTime = 0.0f;
-            PlaySound(game->cutCaveAudio);
-            game->cutsceneTargetLevel = 1;
-            game->cutsceneTargetState = STATE_SURVIVAL;
+            game->cutscene.part = 2;
+            game->cutscene.time = 0.0f;
+            PlaySound(game->cutscene.cutCaveAudio);
+            game->cutscene.targetLevel = 1;
+            game->cutscene.targetState = STATE_SURVIVAL;
         } else if (currentLevel == 1) {
-            GameHistory_SaveEntry(game->playerName, 2, false);
+            GameHistory_SaveEntry(game->playerInfo.name, 2, false);
             LoadLevel(game, 2);
         } else if (currentLevel == 2) {
-            GameHistory_SaveEntry(game->playerName, 3, false);
+            GameHistory_SaveEntry(game->playerInfo.name, 3, false);
             LoadLevel(game, 3);
         } else if (currentLevel == 3) {
-            GameHistory_SaveEntry(game->playerName, 4, true);
+            GameHistory_SaveEntry(game->playerInfo.name, 4, true);
             GameState_LoadCutscenes(game);
             game->state = STATE_INTRO;
-            game->cutscenePart = 3;
-            game->cutsceneTime = 0.0f;
-            game->cutsceneTargetLevel = 3;
-            game->cutsceneTargetState = STATE_WIN;
+            game->cutscene.part = 3;
+            game->cutscene.time = 0.0f;
+            game->cutscene.targetLevel = 3;
+            game->cutscene.targetState = STATE_WIN;
         }
     }
 
     if (currentLevel == 3 && game->state == STATE_SURVIVAL) {
-        game->escapeTimer -= dt;
-        if (game->escapeTimer <= 0.0f) {
-            game->escapeTimer = 0.0f;
-            GameHistory_SaveEntry(game->playerName, 4, false);
+        game->levelInfo.escapeTimer -= dt;
+        if (game->levelInfo.escapeTimer <= 0.0f) {
+            game->levelInfo.escapeTimer = 0.0f;
+            GameHistory_SaveEntry(game->playerInfo.name, 4, false);
             game->state = STATE_GAMEOVER;
         }
     }
@@ -843,9 +843,9 @@ void UpdateGame(GameState* game, float dt) {
     int pRow = (int)(game->player.position.y / TILE_PX);
 
     for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
-        if (game->ashEffects[i].active) {
-            game->ashEffects[i].timer -= dt;
-            if (game->ashEffects[i].timer <= 0.0f) game->ashEffects[i].active = false;
+        if (game->enemies.ashEffects[i].active) {
+            game->enemies.ashEffects[i].timer -= dt;
+            if (game->enemies.ashEffects[i].timer <= 0.0f) game->enemies.ashEffects[i].active = false;
         }
     }
 
@@ -908,8 +908,8 @@ static void DrawGameplayWorld(const GameState* game) {
     }
 
     if (currentLevel == 0) {
-        float mx = game->mayorCol * TILE_PX;
-        float my = game->mayorRow * TILE_PX;
+        float mx = game->levelInfo.mayorCol * TILE_PX;
+        float my = game->levelInfo.mayorRow * TILE_PX;
         float pulse = sinf(GetTime() * 4.0f);
         if (game->state == STATE_EXPLORING) {
             DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
@@ -923,22 +923,22 @@ static void DrawGameplayWorld(const GameState* game) {
     }
 
     for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
-        if (game->ashEffects[i].active) {
-            float ax = game->ashEffects[i].gridX * TILE_PX;
-            float ay = game->ashEffects[i].gridY * TILE_PX;
-            float alpha = (game->ashEffects[i].timer / 1.5f) * 0.8f;
+        if (game->enemies.ashEffects[i].active) {
+            float ax = game->enemies.ashEffects[i].gridX * TILE_PX;
+            float ay = game->enemies.ashEffects[i].gridY * TILE_PX;
+            float alpha = (game->enemies.ashEffects[i].timer / 1.5f) * 0.8f;
             DrawRectangle(ax, ay, TILE_PX, TILE_PX, ColorAlpha((Color){30, 30, 30, 255}, alpha));
         }
     }
 
     for (int i = 0; i < MAX_ZOMBIES; i++) {
-        if (game->zombies[i].active) {
-            float zx = game->zombies[i].position.x;
-            float zy = game->zombies[i].position.y;
+        if (game->enemies.list[i].active) {
+            float zx = game->enemies.list[i].position.x;
+            float zy = game->enemies.list[i].position.y;
             
-            EnemyProperties props = GetEnemyProperties(game->zombies[i].type, currentLevel, game->difficulty);
+            EnemyProperties props = GetEnemyProperties(game->enemies.list[i].type, currentLevel, game->menu.difficulty);
             float pulse = 0.0f;
-            if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
+            if (game->enemies.list[i].type == ENEMY_BRAINROT_GOD) {
                 pulse = sinf(GetTime() * 4.0f) * 4.0f;
             }
 
@@ -946,7 +946,7 @@ static void DrawGameplayWorld(const GameState* game) {
             Texture2D tileset = game->spritesTileset;
             int tilesPerRow = game->spritesTilesPerRow;
 
-            if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+            if (game->enemies.list[i].type == ENEMY_SNAKE && currentLevel != 1) {
                 tileset = game->map.tileset;
                 tilesPerRow = game->map.tilesPerRow;
             }
@@ -956,7 +956,7 @@ static void DrawGameplayWorld(const GameState* game) {
                            (Rectangle){ zx - TILE_PX * offset, zy - TILE_PX * offset, TILE_PX * props.scale + pulse, TILE_PX * props.scale + pulse },
                            (Vector2){ 0, 0 }, 0.0f, props.color);
 
-            if (game->zombies[i].type == ENEMY_SNAKE && currentLevel != 1) {
+            if (game->enemies.list[i].type == ENEMY_SNAKE && currentLevel != 1) {
                 DrawRectangle(zx, zy, TILE_PX, TILE_PX, ColorAlpha(RED, 0.45f));
             }
 
@@ -965,35 +965,35 @@ static void DrawGameplayWorld(const GameState* game) {
             float zx_offset = zx - (barWidth - TILE_PX)/2.0f;
             float z_py = zy - 10.0f;
             DrawRectangle(zx_offset, z_py, barWidth, barHeight, ColorAlpha(BLACK, 0.6f));
-            float pct = game->zombies[i].health / game->zombies[i].maxHealth;
+            float pct = game->enemies.list[i].health / game->enemies.list[i].maxHealth;
             if (pct < 0.0f) pct = 0.0f;
             DrawRectangle(zx_offset + 1, z_py + 1, (barWidth - 2) * pct, barHeight - 2, RED);
 
-            if (game->zombies[i].type == ENEMY_BRAINROT_GOD) {
+            if (game->enemies.list[i].type == ENEMY_BRAINROT_GOD) {
                 DrawText("USE FRAGMENTS", zx - 24, z_py - 12, 10, YELLOW);
             }
         }
     }
 
-    if (currentLevel == 2 && game->bosses[BOSS_BRAINROT_GOD].spawned && !game->bosses[BOSS_BRAINROT_GOD].defeated) {
+    if (currentLevel == 2 && game->enemies.status[BOSS_BRAINROT_GOD].spawned && !game->enemies.status[BOSS_BRAINROT_GOD].defeated) {
         Color colors[3] = { GREEN, YELLOW, RAYWHITE };
         for (int i = 0; i < 3; i++) {
-            if (!game->fragments[i].activated) {
+            if (!game->enemies.fragments[i].activated) {
                 float pulse = sinf(GetTime() * 5.0f);
-                Vector2 fPos = game->fragments[i].position;
+                Vector2 fPos = game->enemies.fragments[i].position;
                 DrawCircleLines(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 15.0f + pulse * 4.0f, colors[i]);
                 DrawCircle(fPos.x + TILE_PX/2.0f, fPos.y + TILE_PX/2.0f, 6.0f, ColorAlpha(colors[i], 0.5f));
-                DrawText(game->fragments[i].name, fPos.x - MeasureText(game->fragments[i].name, 10)/2.0f + TILE_PX/2.0f, fPos.y - 12, 10, colors[i]);
+                DrawText(game->enemies.fragments[i].name, fPos.x - MeasureText(game->enemies.fragments[i].name, 10)/2.0f + TILE_PX/2.0f, fPos.y - 12, 10, colors[i]);
             }
         }
     }
 
     for (int i = 0; i < MAX_ENEMY_PROJECTILES; i++) {
-        if (game->enemyProjectiles[i].active) {
-            Vector2 p = game->enemyProjectiles[i].position;
-            float r = game->enemyProjectiles[i].isBig ? 12.0f : 5.0f;
-            Color innerCol = game->enemyProjectiles[i].isBig ? PURPLE : ORANGE;
-            Color outerCol = game->enemyProjectiles[i].isBig ? MAGENTA : RED;
+        if (game->enemies.projectiles[i].active) {
+            Vector2 p = game->enemies.projectiles[i].position;
+            float r = game->enemies.projectiles[i].isBig ? 12.0f : 5.0f;
+            Color innerCol = game->enemies.projectiles[i].isBig ? PURPLE : ORANGE;
+            Color outerCol = game->enemies.projectiles[i].isBig ? MAGENTA : RED;
             DrawCircle(p.x, p.y, r, outerCol);
             DrawCircle(p.x, p.y, r * 0.6f, innerCol);
             DrawCircle(p.x, p.y, r * 0.3f, YELLOW);
@@ -1035,9 +1035,9 @@ static void DrawGameplayWorld(const GameState* game) {
         }
     }
 
-    if (game->gunSpawned) {
-        float gx = game->gunCol * TILE_PX;
-        float gy = game->gunRow * TILE_PX;
+    if (game->playerInfo.gunSpawned) {
+        float gx = game->playerInfo.gunCol * TILE_PX;
+        float gy = game->playerInfo.gunRow * TILE_PX;
         float xco = (float)((133 % game->spritesTilesPerRow) * TILE_SIZE);
         float yco = (float)((133 / game->spritesTilesPerRow) * TILE_SIZE);
         Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
@@ -1048,9 +1048,9 @@ static void DrawGameplayWorld(const GameState* game) {
         DrawCircleLines(gx + TILE_PX/2.0f, gy + TILE_PX/2.0f, 10.0f + pulse * 4.0f + 1.0f, BLUE);
     }
 
-    if (game->potionSpawned) {
-        float gx = game->potionCol * TILE_PX;
-        float gy = game->potionRow * TILE_PX;
+    if (game->levelInfo.potionSpawned) {
+        float gx = game->levelInfo.potionCol * TILE_PX;
+        float gy = game->levelInfo.potionRow * TILE_PX;
         float xco = (float)((135 % game->spritesTilesPerRow) * TILE_SIZE);
         float yco = (float)((135 / game->spritesTilesPerRow) * TILE_SIZE);
         Rectangle src = { xco, yco, (float)TILE_SIZE, (float)TILE_SIZE };
@@ -1062,8 +1062,8 @@ static void DrawGameplayWorld(const GameState* game) {
     }
 
     for (int p = 0; p < MAX_PLAYER_PROJECTILES; p++) {
-        if (game->playerProjectiles[p].active) {
-            Vector2 pos = game->playerProjectiles[p].position;
+        if (game->playerInfo.projectiles[p].active) {
+            Vector2 pos = game->playerInfo.projectiles[p].position;
             DrawCircle(pos.x, pos.y, 6.0f, SKYBLUE);
             DrawCircle(pos.x, pos.y, 4.0f, BLUE);
             DrawCircle(pos.x, pos.y, 2.0f, WHITE);
@@ -1076,20 +1076,20 @@ static void DrawGameplayWorld(const GameState* game) {
 void DrawGame(const GameState* game) {
     if (game->state == STATE_INTRO) {
         ClearBackground(BLACK);
-        int frameIndex = (game->cutscenePart == 3) ? (int)(game->cutsceneTime / 3.0f) :
-                         (game->cutscenePart == 2) ? (int)(game->cutsceneTime * 24.0f) :
-                                                     (int)(game->cutsceneTime * 15.0f);
+        int frameIndex = (game->cutscene.part == 3) ? (int)(game->cutscene.time / 3.0f) :
+                         (game->cutscene.part == 2) ? (int)(game->cutscene.time * 24.0f) :
+                                                     (int)(game->cutscene.time * 15.0f);
         Texture2D frameTex = { 0 };
-        if (game->cutscenePart == 0) {
-            if (frameIndex >= 0 && frameIndex < CUT1_FRAMES) frameTex = game->cut1Textures[frameIndex];
-        } else if (game->cutscenePart == 1) {
-            if (frameIndex >= 0 && frameIndex < CUT2_FRAMES) frameTex = game->cut2Textures[frameIndex];
-        } else if (game->cutscenePart == 2) {
-            if (frameIndex >= 0 && frameIndex < CUT_CAVE_FRAMES) frameTex = game->cutCaveTextures[frameIndex];
-        } else if (game->cutscenePart == 3) {
+        if (game->cutscene.part == 0) {
+            if (frameIndex >= 0 && frameIndex < CUT1_FRAMES) frameTex = game->cutscene.cut1Textures[frameIndex];
+        } else if (game->cutscene.part == 1) {
+            if (frameIndex >= 0 && frameIndex < CUT2_FRAMES) frameTex = game->cutscene.cut2Textures[frameIndex];
+        } else if (game->cutscene.part == 2) {
+            if (frameIndex >= 0 && frameIndex < CUT_CAVE_FRAMES) frameTex = game->cutscene.cutCaveTextures[frameIndex];
+        } else if (game->cutscene.part == 3) {
             if (frameIndex < 0) frameIndex = 0;
             if (frameIndex >= ENDSCENE_FRAMES) frameIndex = ENDSCENE_FRAMES - 1;
-            frameTex = game->endsceneTextures[frameIndex];
+            frameTex = game->cutscene.endsceneTextures[frameIndex];
         }
 
         if (frameTex.id > 0) {
@@ -1139,10 +1139,10 @@ void DrawGame(const GameState* game) {
     else if (game->state == STATE_WIN) DrawWinScreen(game);
     else DrawHUD(game);
 
-    if (game->startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+    if (game->levelInfo.startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
         float alpha = 1.0f;
-        if (game->startTextTimer > 3.0f) alpha = (4.0f - game->startTextTimer);
-        else if (game->startTextTimer < 1.0f) alpha = game->startTextTimer;
+        if (game->levelInfo.startTextTimer > 3.0f) alpha = (4.0f - game->levelInfo.startTextTimer);
+        else if (game->levelInfo.startTextTimer < 1.0f) alpha = game->levelInfo.startTextTimer;
 
         int bannerH = 160;
         int bannerY = (GetScreenHeight() - bannerH) / 2;
@@ -1169,13 +1169,13 @@ void DrawGame(const GameState* game) {
 
 void GameState_Unload(GameState* self) {
     GameState_UnloadCutscenes(self);
-    UnloadMusicStream(self->bgMusic);
-    UnloadSound(self->slashSound);
-    UnloadSound(self->blastSound);
-    UnloadSound(self->hitSound);
-    UnloadSound(self->cut1Audio);
-    UnloadSound(self->cut2Audio);
-    UnloadSound(self->cutCaveAudio);
+    UnloadMusicStream(self->audio.bgMusic);
+    UnloadSound(self->audio.slash);
+    UnloadSound(self->audio.blast);
+    UnloadSound(self->audio.hit);
+    UnloadSound(self->cutscene.cut1Audio);
+    UnloadSound(self->cutscene.cut2Audio);
+    UnloadSound(self->cutscene.cutCaveAudio);
     UnloadTexture(self->playerTileset);
     if (self->spritesTileset.id != self->playerTileset.id) {
         UnloadTexture(self->spritesTileset);
