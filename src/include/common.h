@@ -245,6 +245,7 @@ typedef struct {
     Texture2D cut1Textures[152];
     Texture2D cut2Textures[62];
     Texture2D cutCaveTextures[240];
+    Texture2D endsceneTextures[12];
     float startTextTimer;  // Timer for displaying the level start banner overlay
     int mayorRow;          // Randomly selected row for Mayor spawn
     int mayorCol;          // Randomly selected col for Mayor spawn

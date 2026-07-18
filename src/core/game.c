@@ -9,6 +9,7 @@ int currentLevel = 0;
 #define CUT1_FRAMES 152
 #define CUT2_FRAMES 62
 #define CUT_CAVE_FRAMES 240
+#define ENDSCENE_FRAMES 12
 
 static void UpdatePlayerWeapon(GameState* game, float dt);
 static void UpdatePlayerProjectiles(GameState* game, float dt);
@@ -43,6 +44,10 @@ void GameState_LoadCutscenes(GameState* game) {
         sprintf(path, "cutscenes/frames/cutscene_cave_%03d.png", i + 1);
         game->cutCaveTextures[i] = LoadTexture(path);
     }
+    for (int i = 0; i < ENDSCENE_FRAMES; i++) {
+        sprintf(path, "cutscenes/endscenes/end%d.png", i + 1);
+        game->endsceneTextures[i] = LoadTexture(path);
+    }
     game->cutscenesLoaded = true;
 }
 
@@ -64,6 +69,12 @@ void GameState_UnloadCutscenes(GameState* game) {
         if (game->cutCaveTextures[i].id > 0) {
             UnloadTexture(game->cutCaveTextures[i]);
             game->cutCaveTextures[i].id = 0;
+        }
+    }
+    for (int i = 0; i < ENDSCENE_FRAMES; i++) {
+        if (game->endsceneTextures[i].id > 0) {
+            UnloadTexture(game->endsceneTextures[i]);
+            game->endsceneTextures[i].id = 0;
         }
     }
     game->cutscenesLoaded = false;
@@ -260,6 +271,8 @@ void LoadLevel(GameState* game, int levelIndex) {
         game->bossRow = 16;
         game->bossCol = 20;
         SpawnEnemy(game, ENEMY_DOOM_SCROLLER, game->bossRow, game->bossCol);
+    } else if (levelIndex == 3) {
+        for (int s = 0; s < 6; s++) SpawnZombie(game);
     }
 
     game->hasGun = false;
@@ -302,10 +315,16 @@ void LoadLevel(GameState* game, int levelIndex) {
 
 void GameState_TransitionFromCutscene(GameState* game) {
     if (game->cutsceneTargetState != (GameMode)-1) {
-        LoadLevel(game, game->cutsceneTargetLevel);
+        if (game->cutsceneTargetState == STATE_WIN) {
+            game->state = STATE_WIN;
+        } else {
+            LoadLevel(game, game->cutsceneTargetLevel);
+            game->state = game->cutsceneTargetState;
+        }
         game->cutsceneTargetState = (GameMode)-1;
     } else {
         LoadLevel(game, 0);
+        game->state = STATE_EXPLORING;
         game->lives = PLAYER_INITIAL_LIVES;
     }
     PlayMusicStream(game->bgMusic);
@@ -520,6 +539,10 @@ static void UpdateIntroState(GameState* game, float dt) {
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
+    if (game->cutscenePart == 3 && game->cutsceneTime >= 36.0f) {
+        GameState_UnloadCutscenes(game);
+        GameState_TransitionFromCutscene(game);
+    }
 }
 
 static void UpdateExploringState(GameState* game, int oldRow, int oldCol, float dt) {
@@ -631,7 +654,12 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
                 LoadLevel(game, 2);
             } else if (currentLevel == 3) {
                 GameHistory_SaveEntry(game->playerName, 4, true);
-                game->state = STATE_WIN;
+                GameState_LoadCutscenes(game);
+                game->state = STATE_INTRO;
+                game->cutscenePart = 3;
+                game->cutsceneTime = 0.0f;
+                game->cutsceneTargetLevel = 3;
+                game->cutsceneTargetState = STATE_WIN;
             }
         }
     }
@@ -793,7 +821,12 @@ void UpdateGame(GameState* game, float dt) {
             LoadLevel(game, 3);
         } else if (currentLevel == 3) {
             GameHistory_SaveEntry(game->playerName, 4, true);
-            game->state = STATE_WIN;
+            GameState_LoadCutscenes(game);
+            game->state = STATE_INTRO;
+            game->cutscenePart = 3;
+            game->cutsceneTime = 0.0f;
+            game->cutsceneTargetLevel = 3;
+            game->cutsceneTargetState = STATE_WIN;
         }
     }
 
@@ -1043,7 +1076,9 @@ static void DrawGameplayWorld(const GameState* game) {
 void DrawGame(const GameState* game) {
     if (game->state == STATE_INTRO) {
         ClearBackground(BLACK);
-        int frameIndex = (game->cutscenePart == 2) ? (int)(game->cutsceneTime * 24.0f) : (int)(game->cutsceneTime * 15.0f);
+        int frameIndex = (game->cutscenePart == 3) ? (int)(game->cutsceneTime / 3.0f) :
+                         (game->cutscenePart == 2) ? (int)(game->cutsceneTime * 24.0f) :
+                                                     (int)(game->cutsceneTime * 15.0f);
         Texture2D frameTex = { 0 };
         if (game->cutscenePart == 0) {
             if (frameIndex >= 0 && frameIndex < CUT1_FRAMES) frameTex = game->cut1Textures[frameIndex];
@@ -1051,6 +1086,10 @@ void DrawGame(const GameState* game) {
             if (frameIndex >= 0 && frameIndex < CUT2_FRAMES) frameTex = game->cut2Textures[frameIndex];
         } else if (game->cutscenePart == 2) {
             if (frameIndex >= 0 && frameIndex < CUT_CAVE_FRAMES) frameTex = game->cutCaveTextures[frameIndex];
+        } else if (game->cutscenePart == 3) {
+            if (frameIndex < 0) frameIndex = 0;
+            if (frameIndex >= ENDSCENE_FRAMES) frameIndex = ENDSCENE_FRAMES - 1;
+            frameTex = game->endsceneTextures[frameIndex];
         }
 
         if (frameTex.id > 0) {

@@ -57,6 +57,7 @@ void OnEnemyDeath(GameState* game, int idx) {
             Tilemap_Load(&game->map, "finalmap.csv", "finalmap_packed.png");
             
             Player_Init(&game->player);
+            game->player.hasWeapon = true;
             game->player.position.x = 2.0f * TILE_PX;
             game->player.position.y = 2.0f * TILE_PX;
             game->player.gridX = 2;
@@ -66,6 +67,8 @@ void OnEnemyDeath(GameState* game, int idx) {
             game->zombieTimer = 0.0f;
             game->zombieSpawnTimer = 0.0f;
             for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+            for (int s = 0; s < 6; s++) SpawnZombie(game);
+            
             game->startTextTimer = 4.0f;
             
             game->checkpointPosition = game->player.position;
