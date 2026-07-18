@@ -64,9 +64,6 @@ void DrawMenuScreen(const GameState* game) {
     DrawText(titleText, (GetScreenWidth() - titleWidth) / 2 + 4, GetScreenHeight() / 4 + 4, 56, BLACK);
     DrawText(titleText, (GetScreenWidth() - titleWidth) / 2, GetScreenHeight() / 4, 56, (Color){ 180, 0, 0, 255 });
     
-    const char* subtitle = "A Raylib Retro Roguelike";
-    int subWidth = MeasureText(subtitle, 18);
-    DrawText(subtitle, (GetScreenWidth() - subWidth) / 2, GetScreenHeight() / 4 + 70, 18, GRAY);
 
     Color playColor = (game->menu.menuSelection == 0) ? RED : DARKGRAY;
     Color diffColor = (game->menu.menuSelection == 1) ? RED : DARKGRAY;
@@ -197,13 +194,10 @@ void DrawTeamScreen(const GameState* game) {
     DrawText("--------------------------------", boxX + 120, boxY + 80, 20, GRAY);
     
     DrawText("MD Fahad Islam", boxX + 200, boxY + 130, 22, WHITE);
-    DrawText("Lead Developer / Systems Programmer", boxX + 140, boxY + 165, 16, GRAY);
     
     DrawText("Shafiul Alam Aquib", boxX + 180, boxY + 215, 22, WHITE);
-    DrawText("Level Designer / Audio Engineer", boxX + 160, boxY + 250, 16, GRAY);
     
     DrawText("Rafi Ahmed", boxX + 220, boxY + 300, 22, WHITE);
-    DrawText("Gameplay Designer / Artist", boxX + 180, boxY + 335, 16, GRAY);
 
     DrawText("Press [ESC] or [ENTER] to return", boxX + 160, boxY + 395, 16, YELLOW);
 }

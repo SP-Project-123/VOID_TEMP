@@ -518,7 +518,7 @@ This is the **central struct** holding ALL game state. Every system reads/writes
   - Skippable with ENTER/SPACE/ESCAPE
   - Cutscene 1 lasts 10s, then auto-transitions to cutscene 2 (4s).
   - Cave transition cutscene (`cutscenePart = 2`) plays for 10s at 24 FPS with audio `cutscene_cave.wav` when transitioning from Level 0 to Level 1.
-  - Victory storyboard cutscene (`cutscenePart = 3`) plays 12 storyboard slides (each for 3s, totaling 36s) after escaping Level 3 before transitioning to the win screen.
+  - Victory storyboard cutscene (`cutscenePart = 3`) plays 12 storyboard slides (each for 1s, totaling 12s) after escaping Level 3 before transitioning to the win screen.
   - After the active cutscene finishes: unloads cutscenes, calls `GameState_TransitionFromCutscene()`
 
 - **STATE_INFO** (line 507): LEFT/RIGHT pages through 5 story pages, ESCAPE returns

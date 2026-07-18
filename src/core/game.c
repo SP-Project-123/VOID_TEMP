@@ -16,9 +16,9 @@ static void UpdatePlayerProjectiles(GameState* game, float dt);
 static void UpdateMenuState(GameState* game);
 static void UpdateNamePromptState(GameState* game);
 static void UpdateIntroState(GameState* game, float dt);
-static void UpdateExploringState(GameState* game, int pRow, int pCol, float dt);
+static void UpdateExploringState(GameState* game, float dt);
 static void UpdateCutsceneState(GameState* game);
-static void UpdateSurvivalState(GameState* game, float dt, int pRow, int pCol);
+static void UpdateSurvivalState(GameState* game, float dt);
 static void UpdateGameOverState(GameState* game);
 static void UpdateWinState(GameState* game);
 static void DrawGameplayWorld(const GameState* game);
@@ -209,38 +209,13 @@ void LoadLevel(GameState* game, int levelIndex) {
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int tid = game->map.tiles[y][x];
                 if (tid == 283 || tid == 306 || tid == 308 || tid == 355) {
-                    game->map.tiles[y][x] = 20;
+                    game->map.tiles[y][x] = 20; //delete duplication on respawn
                 }
             }
         }
 
-        typedef struct { int r, c; } CoordPair;
-        CoordPair candidates[MAP_WIDTH * MAP_HEIGHT];
-        int candidateCount = 0;
-
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 2; x++) {
-                int type1 = GetTileType(game->map.tiles[y][x]);
-                int type2 = GetTileType(game->map.tiles[y][x+1]);
-                if (type1 != TILE_WALL && type2 != TILE_WALL) {
-                    int distSq = (y - 2) * (y - 2) + (x - 2) * (x - 2);
-                    if (distSq >= 100) {
-                        candidates[candidateCount].r = y;
-                        candidates[candidateCount].c = x;
-                        candidateCount++;
-                    }
-                }
-            }
-        }
-
-        if (candidateCount > 0) {
-            int idx = GetRandomValue(0, candidateCount - 1);
-            game->levelInfo.mayorRow = candidates[idx].r;
-            game->levelInfo.mayorCol = candidates[idx].c;
-        } else {
-            game->levelInfo.mayorRow = 10;
-            game->levelInfo.mayorCol = 10;
-        }
+        game->levelInfo.mayorRow = 10;
+        game->levelInfo.mayorCol = 10;
         game->map.tiles[game->levelInfo.mayorRow][game->levelInfo.mayorCol] = 283;
     }
 
@@ -539,13 +514,13 @@ static void UpdateIntroState(GameState* game, float dt) {
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
-    if (game->cutscene.part == 3 && game->cutscene.time >= 36.0f) {
+    if (game->cutscene.part == 3 && game->cutscene.time >= 12.0f) {
         GameState_UnloadCutscenes(game);
         GameState_TransitionFromCutscene(game);
     }
 }
 
-static void UpdateExploringState(GameState* game, int oldRow, int oldCol, float dt) {
+static void UpdateExploringState(GameState* game, float dt) {
     Player_Update(&game->player, &game->map, dt);
     int pCol = (int)((game->player.position.x + TILE_PX / 2.0f) / TILE_PX);
     int pRow = (int)((game->player.position.y + TILE_PX / 2.0f) / TILE_PX);
@@ -589,7 +564,7 @@ static void UpdateCutsceneState(GameState* game) {
     }
 }
 
-static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCol) {
+static void UpdateSurvivalState(GameState* game, float dt) {
     Player_Update(&game->player, &game->map, dt);
 
     int pCol = (int)((game->player.position.x + TILE_PX / 2.0f) / TILE_PX);
@@ -839,9 +814,6 @@ void UpdateGame(GameState* game, float dt) {
         }
     }
 
-    int pCol = (int)(game->player.position.x / TILE_PX);
-    int pRow = (int)(game->player.position.y / TILE_PX);
-
     for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
         if (game->enemies.ashEffects[i].active) {
             game->enemies.ashEffects[i].timer -= dt;
@@ -862,9 +834,9 @@ void UpdateGame(GameState* game, float dt) {
                 game->state = STATE_MENU;
             }
             break;
-        case STATE_EXPLORING:    UpdateExploringState(game, pRow, pCol, dt); break;
+        case STATE_EXPLORING:    UpdateExploringState(game, dt); break;
         case STATE_CUTSCENE:     UpdateCutsceneState(game); break;
-        case STATE_SURVIVAL:     UpdateSurvivalState(game, dt, pRow, pCol); break;
+        case STATE_SURVIVAL:     UpdateSurvivalState(game, dt); break;
         case STATE_GAMEOVER:     UpdateGameOverState(game); break;
         case STATE_WIN:          UpdateWinState(game); break;
     }
@@ -901,23 +873,15 @@ static void DrawGameplayWorld(const GameState* game) {
     if (currentLevel == 3) {
         float ex = 33 * TILE_PX;
         float ey = 18 * TILE_PX;
-        float pulse = sinf(GetTime() * 4.0f);
-        DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
-        DrawCircleLines(ex + TILE_PX/2.0f, ey + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
         DrawText("EXIT", ex - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, ey - 12, 10, GOLD);
     }
 
     if (currentLevel == 0) {
         float mx = game->levelInfo.mayorCol * TILE_PX;
         float my = game->levelInfo.mayorRow * TILE_PX;
-        float pulse = sinf(GetTime() * 4.0f);
         if (game->state == STATE_EXPLORING) {
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GREEN);
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, LIME);
             DrawText("MAYOR", mx - MeasureText("MAYOR", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GREEN);
         } else if (game->state == STATE_SURVIVAL) {
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f, GOLD);
-            DrawCircleLines(mx + TILE_PX/2.0f, my + TILE_PX/2.0f, 16.0f + pulse * 4.0f + 1.0f, YELLOW);
             DrawText("EXIT", mx - MeasureText("EXIT", 10)/2.0f + TILE_PX/2.0f, my - 12, 10, GOLD);
         }
     }
@@ -1076,7 +1040,7 @@ static void DrawGameplayWorld(const GameState* game) {
 void DrawGame(const GameState* game) {
     if (game->state == STATE_INTRO) {
         ClearBackground(BLACK);
-        int frameIndex = (game->cutscene.part == 3) ? (int)(game->cutscene.time / 3.0f) :
+        int frameIndex = (game->cutscene.part == 3) ? (int)(game->cutscene.time / 1.0f) :
                          (game->cutscene.part == 2) ? (int)(game->cutscene.time * 24.0f) :
                                                      (int)(game->cutscene.time * 15.0f);
         Texture2D frameTex = { 0 };
