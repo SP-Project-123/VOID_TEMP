@@ -677,7 +677,9 @@ void UpdateGame(GameState* game, float dt) {
     UpdateMusicStream(game->bgMusic);
 
     if (game->hitSoundTimer > 0.0f) game->hitSoundTimer -= dt;
-    if (game->startTextTimer > 0.0f) game->startTextTimer -= dt;
+    if (game->startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+        game->startTextTimer -= dt;
+    }
 
     int pCol = (int)(game->player.position.x / TILE_PX);
     int pRow = (int)(game->player.position.y / TILE_PX);
@@ -937,7 +939,7 @@ void DrawGame(const GameState* game) {
     else if (game->state == STATE_WIN) DrawWinScreen(game);
     else DrawHUD(game);
 
-    if (game->startTextTimer > 0.0f) {
+    if (game->startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
         float alpha = 1.0f;
         if (game->startTextTimer > 3.0f) alpha = (4.0f - game->startTextTimer);
         else if (game->startTextTimer < 1.0f) alpha = game->startTextTimer;
