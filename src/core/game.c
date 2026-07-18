@@ -653,11 +653,16 @@ static void UpdateSurvivalState(GameState* game, float dt, int oldRow, int oldCo
             if (currentLevel != game->checkpointLevel) {
                 LoadLevel(game, game->checkpointLevel);
             } else {
-                game->player.position = game->checkpointPosition;
-                game->player.gridX = (int)(game->player.position.x / TILE_PX);
-                game->player.gridY = (int)(game->player.position.y / TILE_PX);
-                game->state = game->checkpointState;
-                for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+                if (currentLevel == 0 && game->checkpointState == STATE_SURVIVAL) {
+                    game->player.position = game->checkpointPosition;
+                    game->player.gridX = (int)(game->player.position.x / TILE_PX);
+                    game->player.gridY = (int)(game->player.position.y / TILE_PX);
+                    game->state = game->checkpointState;
+                    for (int z = 0; z < MAX_ZOMBIES; z++) game->zombies[z].active = false;
+                    for (int s = 0; s < 6; s++) SpawnZombie(game);
+                } else {
+                    LoadLevel(game, currentLevel);
+                }
             }
         } else {
             GameHistory_SaveEntry(game->playerName, currentLevel + 1, false);
