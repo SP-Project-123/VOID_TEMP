@@ -161,6 +161,10 @@ const LevelConfig g_levelConfigs[4] = {
     { "finalmap.csv", "finalmap_packed.png",       "OBJ: Escape the Collapsing Center!" }
 };
 
+/*
+ * LoadLevel - Loads map CSVs, configures tile properties, resets player coordinates,
+ * and sets up level-specific spawn points for boss phases and standard enemies.
+ */
 void LoadLevel(GameState* game, int levelIndex) {
     if (levelIndex < 0 || levelIndex >= 4) return;
     currentLevel = levelIndex;
@@ -762,21 +766,17 @@ static void UpdateWinState(GameState* game) {
     }
 }
 
-void UpdateGame(GameState* game, float dt) {
+static bool UpdateBossLogs(GameState* game) {
     for (int i = 0; i < 4; i++) {
         if (game->enemies.status[i].showLog) {
             if (IsKeyPressed(KEY_ENTER)) game->enemies.status[i].showLog = false;
-            return;
+            return true;
         }
     }
+    return false;
+}
 
-    UpdateMusicStream(game->audio.bgMusic);
-
-    if (game->audio.hitTimer > 0.0f) game->audio.hitTimer -= dt;
-    if (game->levelInfo.startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
-        game->levelInfo.startTextTimer -= dt;
-    }
-
+static void UpdateDebugCheats(GameState* game) {
     if (IsKeyPressed(KEY_M) && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
         for (int i = 0; i < MAX_ZOMBIES; i++) game->enemies.list[i].active = false;
         if (currentLevel == 0) {
@@ -804,7 +804,13 @@ void UpdateGame(GameState* game, float dt) {
             game->cutscene.targetState = STATE_WIN;
         }
     }
+}
 
+static void UpdateLevelTimers(GameState* game, float dt) {
+    if (game->audio.hitTimer > 0.0f) game->audio.hitTimer -= dt;
+    if (game->levelInfo.startTextTimer > 0.0f && (game->state == STATE_EXPLORING || game->state == STATE_SURVIVAL)) {
+        game->levelInfo.startTextTimer -= dt;
+    }
     if (currentLevel == 3 && game->state == STATE_SURVIVAL) {
         game->levelInfo.escapeTimer -= dt;
         if (game->levelInfo.escapeTimer <= 0.0f) {
@@ -813,13 +819,25 @@ void UpdateGame(GameState* game, float dt) {
             game->state = STATE_GAMEOVER;
         }
     }
+}
 
+static void UpdateAshEffects(GameState* game, float dt) {
     for (int i = 0; i < MAX_ASH_EFFECTS; i++) {
         if (game->enemies.ashEffects[i].active) {
             game->enemies.ashEffects[i].timer -= dt;
             if (game->enemies.ashEffects[i].timer <= 0.0f) game->enemies.ashEffects[i].active = false;
         }
     }
+}
+
+void UpdateGame(GameState* game, float dt) {
+    if (UpdateBossLogs(game)) return;
+
+    UpdateMusicStream(game->audio.bgMusic);
+
+    UpdateLevelTimers(game, dt);
+    UpdateDebugCheats(game);
+    UpdateAshEffects(game, dt);
 
     UpdatePlayerWeapon(game, dt);
     UpdatePlayerProjectiles(game, dt);
