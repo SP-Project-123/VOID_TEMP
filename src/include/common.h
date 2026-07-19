@@ -13,7 +13,7 @@
 #define MAX_ZOMBIES 30
 
 // --- Gameplay Parameters & Configs ---
-#define GUN_ABILITY_DURATION 6.0f
+#define GUN_ABILITY_DURATION 4.0f
 #define GUN_SPAWN_TIMER_INITIAL 4.0f
 #define SUPERPOWER_COOLDOWN_MAX 6.0f
 #define SUPERPOWER_BLAST_DURATION 0.5f
@@ -25,6 +25,14 @@
 #define LEVEL3_SPAWN_INTERVAL 1.2f
 #define TILE_MAYOR_ID 283
 #define TILE_CAVE_EXIT_L2 306
+
+// --- Ranged Enemy & Audio Parameters ---
+#define ENEMY_PROJECTILE_SPEED_BIG 150.0f
+#define ENEMY_PROJECTILE_SPEED_SMALL 180.0f
+#define ENEMY_PROJECTILE_LIFETIME 2.5f
+#define ENEMY_PROJECTILE_COLLISION_RADIUS_BIG 22.0f
+#define ENEMY_PROJECTILE_COLLISION_RADIUS_SMALL 14.0f
+#define HIT_SOUND_COOLDOWN 0.25f
 
 // --- Gameplay Settings & Configurations ---
 #define PLAYER_INITIAL_LIVES 3

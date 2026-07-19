@@ -268,7 +268,7 @@ void DrawHUD(const GameState* game) {
         DrawText("GUN", 20, 95, 14, SKYBLUE);
         DrawRectangle(65, 95, 275, 14, ColorAlpha(BLACK, 0.6f));
         DrawRectangleLines(65, 95, 275, 14, DARKGRAY);
-        float gunPct = game->playerInfo.gunAbilityTimer / 4.0f;
+        float gunPct = game->playerInfo.gunAbilityTimer / GUN_ABILITY_DURATION;
         if (gunPct < 0.0f) gunPct = 0.0f;
         DrawRectangle(66, 96, 273 * gunPct, 12, SKYBLUE);
     }

@@ -256,7 +256,7 @@ void LoadLevel(GameState* game, int levelIndex) {
 
     game->playerInfo.hasGun = false;
     game->playerInfo.gunSpawned = false;
-    game->playerInfo.gunSpawnTimer = 4.0f;
+    game->playerInfo.gunSpawnTimer = GUN_SPAWN_TIMER_INITIAL;
     game->playerInfo.gunAbilityTimer = 0.0f;
     game->levelInfo.startTextTimer = 4.0f;
     game->levelInfo.escapeTimer = 120.0f;
@@ -376,7 +376,7 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
         if (sqrtf(dx*dx + dy*dy) < 32.0f) {
             game->playerInfo.gunSpawned = false;
             game->playerInfo.hasGun = true;
-            game->playerInfo.gunAbilityTimer = 4.0f;
+            game->playerInfo.gunAbilityTimer = GUN_ABILITY_DURATION;
             PlaySound(game->audio.blast);
         }
     }
@@ -390,7 +390,7 @@ static void UpdatePlayerWeapon(GameState* game, float dt) {
         game->playerInfo.gunSpawnTimer -= dt;
         if (game->playerInfo.gunSpawnTimer <= 0.0f) {
             SpawnGun(game);
-            game->playerInfo.gunSpawnTimer = 4.0f;
+            game->playerInfo.gunSpawnTimer = GUN_SPAWN_TIMER_INITIAL;
         }
     }
 

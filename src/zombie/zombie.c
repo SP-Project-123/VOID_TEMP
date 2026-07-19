@@ -103,12 +103,12 @@ static void ShootSpiderProjectile(GameState* game, Vector2 startPos, Vector2 tar
     float len = sqrtf(dx * dx + dy * dy);
     if (len < 0.001f) len = 1.0f;
 
-    float speed = isBig ? 150.0f : 180.0f;
+    float speed = isBig ? ENEMY_PROJECTILE_SPEED_BIG : ENEMY_PROJECTILE_SPEED_SMALL;
     game->enemies.projectiles[projSlot].position = startPos;
     game->enemies.projectiles[projSlot].velocity = (Vector2){ (dx / len) * speed, (dy / len) * speed };
     game->enemies.projectiles[projSlot].active = true;
     game->enemies.projectiles[projSlot].isBig = isBig;
-    game->enemies.projectiles[projSlot].lifeTimer = 2.5f;
+    game->enemies.projectiles[projSlot].lifeTimer = ENEMY_PROJECTILE_LIFETIME;
 }
 
 static bool Zombie_CanMoveTo(const Tilemap* map, float tx, float ty) {
@@ -190,7 +190,7 @@ void UpdateZombies(GameState* game, float dt) {
         Vector2 pCenter = { game->player.position.x + TILE_PX / 2.0f, game->player.position.y + TILE_PX / 2.0f };
         float pDx = pos.x - pCenter.x;
         float pDy = pos.y - pCenter.y;
-        float collisionRadius = game->enemies.projectiles[i].isBig ? 22.0f : 14.0f;
+        float collisionRadius = game->enemies.projectiles[i].isBig ? ENEMY_PROJECTILE_COLLISION_RADIUS_BIG : ENEMY_PROJECTILE_COLLISION_RADIUS_SMALL;
         float damageDealt = game->enemies.projectiles[i].isBig ? RANGED_ZOMBIE_PROJECTILE_DAMAGE_BIG : RANGED_ZOMBIE_PROJECTILE_DAMAGE_SMALL;
 
         if (sqrtf(pDx * pDx + pDy * pDy) < collisionRadius) {
