@@ -1094,6 +1094,17 @@ void DrawGame(const GameState* game) {
                 srcRect = (Rectangle){ 0.0f, cropY, texW, cropH };
             }
 
+            // Zoom the first intro cutscene (part 0) by 25%
+            if (game->cutscene.part == 0) {
+                float zoom = 1.25f;
+                float newW = srcRect.width / zoom;
+                float newH = srcRect.height / zoom;
+                srcRect.x += (srcRect.width - newW) / 2.0f;
+                srcRect.y += (srcRect.height - newH) / 2.0f;
+                srcRect.width = newW;
+                srcRect.height = newH;
+            }
+
             DrawTexturePro(frameTex, 
                            srcRect,
                            (Rectangle){ 0, 0, screenW, screenH },
